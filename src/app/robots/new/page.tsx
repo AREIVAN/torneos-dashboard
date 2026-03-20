@@ -72,10 +72,25 @@ export default function NewRobotPage() {
             tipo_control: value.tipo_control || null,
             frecuencia_protocolo: value.frecuencia_protocolo || null,
             contacto: value.contacto || null,
-            inspeccion_estado: value.inspeccion_estado,
+            inspeccion_estado: value.inspeccion_estado || 'pendiente',
             inspeccion_checklist: value.inspeccion_checklist || null,
             foto_url: value.foto_url || null,
             logo_url: value.logo_url || null,
+            data: JSON.stringify({
+              i: robotId,
+              n: value.nombre,
+              c: value.categoria,
+              t: value.equipo,
+              p: value.controlador,
+              s: value.escuela,
+              w: value.peso_g || null,
+              d: value.dimensiones_mm || null,
+              y: value.tipo_control || null,
+              f: value.frecuencia_protocolo || null,
+              k: value.contacto || null,
+              a: value.inspeccion_estado || 'pendiente',
+              v: 1,
+            }),
           },
         ]);
 
@@ -221,6 +236,66 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Ej. ESIME Azcapotzalco"
                     maxLength={32}
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                  />
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="contacto"
+              children={(field) => (
+                <div>
+                  <div className="flex items-baseline justify-between gap-2.5 mb-1.5">
+                    <label className="text-xs text-brand-muted/80">Contacto</label>
+                    <span className="text-[11px] text-brand-text/45">{(field.state.value || "").length}/40</span>
+                  </div>
+                  <input
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="email@ejemplo.com o +52..."
+                    maxLength={40}
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                  />
+                </div>
+              )}
+            />
+          </div>
+          
+          <div className="text-brand-muted/80 text-xs tracking-wide uppercase mt-4 mb-2.5">Control y Comunicación</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+            <form.Field
+              name="tipo_control"
+              children={(field) => (
+                <div>
+                  <label className="block text-xs text-brand-muted/80 mb-1.5">Tipo de Control</label>
+                  <select
+                    value={field.state.value || ""}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none"
+                  >
+                    <option value="">(selecciona)</option>
+                    <option value="Remoto">Remoto</option>
+                    <option value="Autónomo">Autónomo</option>
+                    <option value="Híbrido">Híbrido</option>
+                  </select>
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="frecuencia_protocolo"
+              children={(field) => (
+                <div>
+                   <div className="flex items-baseline justify-between gap-2.5 mb-1.5">
+                    <label className="text-xs text-brand-muted/80">Frecuencia / Protocolo</label>
+                    <span className="text-[11px] text-brand-text/45">{(field.state.value || "").length}/24</span>
+                  </div>
+                  <input
+                    value={field.state.value || ""}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="Ej. 2.4GHz DSMX, 433MHz, BT"
+                    maxLength={24}
                     className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
                   />
                 </div>

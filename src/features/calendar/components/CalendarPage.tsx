@@ -1,0 +1,182 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import { getEvents, type CalendarEvent } from "../api/getEvents";
+import { evBuildFilterChips, evPickDate, evGenerateICS } from "../lib/eventUtils";
+import { CalendarEventList } from "./CalendarEventList";
+import { TournamentProfile } from "./TournamentProfile";
+
+export function CalendarPage() {
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [chip, setChip] = useState("ALL");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const data = await getEvents();
+    setEvents(data);
+    // Auto-select first upcoming or first event
+    if (data.length > 0) {
+      const now = new Date();
+      const upcoming = data.find((e) => {
+        const d = evPickDate(e);
+        return d && d >= now;
+      });
+      setSelectedId(String((upcoming || data[0]).id));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const selectedEvent = events.find((e) => String(e.id) === selectedId) || null;
+
+  // Build chip list
+  const rows = events.map((t) => ({ t, d: evPickDate(t) })).filter((r) => r.d !== null);
+  const chipLabels = evBuildFilterChips(rows as { t: CalendarEvent }[]);
+
+  const handleClear = () => {
+    setQuery("");
+    setChip("ALL");
+  };
+
+  const handleSubscribe = () => {
+    const now = new Date();
+    const upcoming = events
+      .map((t) => {
+        const d = evPickDate(t);
+        return d ? { t, d } : null;
+      })
+      .filter((r): r is { t: CalendarEvent; d: Date } => r !== null && r.d >= now)
+      .slice(0, 80);
+
+    if (!upcoming.length) {
+      alert("No hay eventos próximos para exportar.");
+      return;
+    }
+
+    const blob = evGenerateICS(upcoming);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "apex_torneos.ics";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
+  };
+
+  return (
+    <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
+        <div className="flex flex-col gap-1">
+          <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">
+            Calendario
+          </h2>
+          <b className="text-lg tracking-wide text-brand-text">
+            Directorio de torneos · próximos y anteriores
+          </b>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Link
+            href="/"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
+            Volver
+          </Link>
+          <button
+            onClick={load}
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
+            Actualizar
+          </button>
+          <button className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+            Agregar evento
+          </button>
+        </div>
+      </div>
+
+      <div className="p-4 flex flex-col gap-3">
+        {/* Search row */}
+        <div className="flex flex-wrap gap-2.5 items-center">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+            }}
+            placeholder="Buscar torneo (nombre, ciudad, categoría, tags)..."
+            className="flex-1 min-w-[200px] px-3 py-2.5 rounded-xl border border-brand-neon/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+          />
+          <button
+            onClick={handleClear}
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
+            Limpiar
+          </button>
+          <button
+            onClick={handleSubscribe}
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            title="Exporta un .ics con próximos eventos"
+          >
+            Suscribirse (ICS)
+          </button>
+          <button className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/28 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+            Lista
+          </button>
+          <button className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+            Mes
+          </button>
+        </div>
+
+        {/* Filter chips */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span
+            onClick={() => setChip("ALL")}
+            className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer transition-all ${
+              chip === "ALL"
+                ? "border-brand-neon2/55 bg-brand-bg/35 text-brand-text"
+                : "border-brand-neon/20 bg-brand-bg/15 text-brand-muted hover:border-brand-neon2/40"
+            }`}
+          >
+            Todos
+          </span>
+          {chipLabels.map((c) => (
+            <span
+              key={c}
+              onClick={() => setChip(c)}
+              className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer transition-all ${
+                chip === c
+                  ? "border-brand-neon2/55 bg-brand-bg/35 text-brand-text"
+                  : "border-brand-neon/20 bg-brand-bg/15 text-brand-muted hover:border-brand-neon2/40"
+              }`}
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+
+        {/* Main grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-brand-muted text-sm">
+            Cargando eventos…
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <CalendarEventList
+              events={events}
+              query={query}
+              chip={chip}
+              onSelect={(id) => setSelectedId(id)}
+            />
+            <TournamentProfile event={selectedEvent} />
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

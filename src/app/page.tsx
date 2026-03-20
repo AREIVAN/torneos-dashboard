@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { DashboardStats } from "@/features/dashboard/components/DashboardStats";
 import { LatestRobots } from "@/features/dashboard/components/LatestRobots";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [searchId, setSearchId] = useState("");
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#id=')) {
+      const robotId = hash.slice(4);
+      router.replace(`/robots/${robotId}`);
+    }
+  }, [router]);
 
   const handleSearch = () => {
     if (searchId.trim()) {

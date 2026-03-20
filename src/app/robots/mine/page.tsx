@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRobotStore } from "@/store/useRobotStore";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
+import { extractRobotFields } from '@/lib/robotHelpers';
 
 export default function MisRobotsPage() {
   const mineIds = useRobotStore((state) => state.mineIds);
@@ -51,19 +52,22 @@ export default function MisRobotsPage() {
              {isLoading ? (
                <div className="animate-pulse bg-brand-bg/25 rounded-[18px] min-h-[140px] w-full border border-brand-neon/20"></div>
              ) : (
-               myRobots?.map((robot) => (
+               myRobots?.map((robot) => {
+                 const rd = extractRobotFields(robot);
+                 return (
                  <Link href={`/robots/${robot.robot_id}`} key={robot.robot_id} className="block rounded-[18px] border border-brand-neon/20 bg-brand-bg/25 p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px">
                    <div className="flex justify-between items-start mb-2">
-                       <h3 className="text-lg font-black text-brand-text m-0">{robot.robot_nombre}</h3>
+                       <h3 className="text-lg font-black text-brand-text m-0">{rd.nombre || 'Sin nombre'}</h3>
                        <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-brand-neon/20 text-brand-text border border-brand-neon/40">#{robot.robot_id}</span>
                    </div>
                    <div className="text-brand-muted text-sm space-y-1">
-                     <p><b>Cat:</b> {robot.categoria}</p>
-                     <p><b>Equipo:</b> {robot.equipo}</p>
-                     <p><b>Piloto:</b> {robot.controlador}</p>
+                     <p><b>Cat:</b> {rd.categoria || 'N/A'}</p>
+                     <p><b>Equipo:</b> {rd.equipo || 'N/A'}</p>
+                     <p><b>Piloto:</b> {rd.controlador || 'N/A'}</p>
                    </div>
                  </Link>
-               ))
+                 );
+               })
              )}
           </div>
         )}
