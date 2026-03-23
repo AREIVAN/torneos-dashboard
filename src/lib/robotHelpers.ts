@@ -11,6 +11,28 @@ export interface RobotData {
   k?: string;
   a?: string;
   l?: string[];
+  q?: string;
+}
+
+interface RobotRecord {
+  robot_id?: string;
+  robot_nombre?: string;
+  categoria?: string;
+  equipo?: string;
+  controlador?: string;
+  escuela?: string;
+  peso_g?: number | null;
+  dimensiones_mm?: string;
+  tipo_control?: string;
+  frecuencia_protocolo?: string;
+  contacto?: string;
+  inspeccion_estado?: string;
+  inspeccion_checklist?: string;
+  foto_url?: string | null;
+  qr_link?: string | null;
+  created_at?: string;
+  team_id?: string | null;
+  data?: unknown;
 }
 
 export interface NormalizedRobot {
@@ -34,7 +56,7 @@ export interface NormalizedRobot {
   rawData: RobotData;
 }
 
-export function extractRobotFields(robot: any): NormalizedRobot {
+export function extractRobotFields(robot: RobotRecord): NormalizedRobot {
   let data: RobotData = {};
 
   if (typeof robot.data === 'string') {
@@ -113,6 +135,7 @@ export function extractRobotFields(robot: any): NormalizedRobot {
 
   const qr_link =
     robot.qr_link ||
+    data.q ||
     null;
 
   const created_at =

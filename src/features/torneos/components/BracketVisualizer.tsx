@@ -1,8 +1,8 @@
 "use client";
 
-import { Bracket, Seed, SeedItem, SeedTeam, IRenderSeedProps } from "@oliverlooney/react-brackets";
+import { Bracket, Seed, SeedItem, IRenderSeedProps } from "@oliverlooney/react-brackets";
 import { transformBracketToRounds } from "../lib/bracketUtils";
-import type { Bracket as BracketType, Match } from "../lib/types";
+import type { Bracket as BracketType } from "../lib/types";
 
 interface SeedData {
   id: string;
@@ -22,118 +22,8 @@ interface BracketVisualizerProps {
   onClear?: (ri: number, mi: number) => void;
 }
 
-function CustomSeed({
-  seed,
-  breakpoint,
-  roundIndex,
-  seedIndex,
-}: IRenderSeedProps & { roundIndex: number; seedIndex: number }) {
-  const data = seed as unknown as SeedData;
-  const team1 = data.teams[0];
-  const team2 = data.teams[1];
-  const isWinner1 = team1?.winner;
-  const isWinner2 = team2?.winner;
-  const isBye1 = data.aBye;
-  const isBye2 = data.bBye;
-
-  return (
-    <Seed
-      mobileBreakpoint={breakpoint}
-      style={{
-        fontSize: 12,
-        background: isWinner1 || isWinner2
-          ? "linear-gradient(135deg, rgba(47,230,255,0.15) 0%, rgba(122,63,255,0.1) 100%)"
-          : "rgba(15,15,25,0.9)",
-        borderColor: isWinner1 || isWinner2
-          ? "rgba(47,230,255,0.5)"
-          : "rgba(122,63,255,0.3)",
-        borderRadius: 12,
-        minWidth: 200,
-      }}
-    >
-      <SeedItem>
-        <div
-          className={`flex items-center justify-between px-3 py-2 ${
-            isWinner1 ? "bg-brand-neon/20" : ""
-          }`}
-          style={{
-            borderBottom: "1px solid rgba(122,63,255,0.15)",
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span
-              className={`font-bold truncate ${
-                isWinner1 ? "text-brand-neon" : "text-brand-text"
-              } ${isBye1 ? "opacity-40 italic" : ""}`}
-            >
-              {team1?.name || "—"}
-            </span>
-            {team1?.score !== undefined && (
-              <span
-                className={`text-xs font-black px-2 py-0.5 rounded-lg ${
-                  isWinner1
-                    ? "bg-brand-neon/30 text-brand-neon"
-                    : "bg-brand-panel/50 text-brand-muted"
-                }`}
-              >
-                {team1.score}/2
-              </span>
-            )}
-          </div>
-          {isWinner1 && (
-            <svg className="w-4 h-4 text-brand-neon ml-2" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-        </div>
-
-        <div
-          className={`flex items-center justify-between px-3 py-2 ${
-            isWinner2 ? "bg-brand-neon/20" : ""
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span
-              className={`font-bold truncate ${
-                isWinner2 ? "text-brand-neon" : "text-brand-text"
-              } ${isBye2 ? "opacity-40 italic" : ""}`}
-            >
-              {team2?.name || "—"}
-            </span>
-            {team2?.score !== undefined && (
-              <span
-                className={`text-xs font-black px-2 py-0.5 rounded-lg ${
-                  isWinner2
-                    ? "bg-brand-neon/30 text-brand-neon"
-                    : "bg-brand-panel/50 text-brand-muted"
-                }`}
-              >
-                {team2.score}/2
-              </span>
-            )}
-          </div>
-          {isWinner2 && (
-            <svg className="w-4 h-4 text-brand-neon ml-2" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-        </div>
-      </SeedItem>
-    </Seed>
-  );
-}
-
 export default function BracketVisualizer({
   bracket,
-  bracketId = "main",
   viewMode,
   onWin,
   onClear,
@@ -159,10 +49,7 @@ export default function BracketVisualizer({
         <Bracket
           rounds={rounds}
           mobileBreakpoint={768}
-          roundTitleComponent={(
-            title: React.ReactNode,
-            roundIndex: number
-          ) => (
+          roundTitleComponent={(title: React.ReactNode) => (
             <div className="text-center mb-4">
               <span className="text-xs uppercase tracking-wider text-brand-muted/70 bg-brand-panel/40 px-4 py-2 rounded-xl border border-brand-stroke/20">
                 {title}

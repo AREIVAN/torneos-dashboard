@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { extractRobotFields } from "@/lib/robotHelpers";
+import { SkeletonRobotProfile } from "@/components/ui/skeleton";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import QRCode from "qrcode";
 
 function InspectionBadge({ estado }: { estado?: string }) {
   const baseClasses = "px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide";
@@ -22,6 +27,7 @@ function InspectionBadge({ estado }: { estado?: string }) {
 
 export default function RobotViewerPage() {
   const { id } = useParams();
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const { data: robot, isLoading, error } = useQuery({
     queryKey: ['robot', id],
@@ -39,17 +45,62 @@ export default function RobotViewerPage() {
 
   const robotData = robot ? extractRobotFields(robot) : null;
 
+  const qrValue =
+    robotData?.qr_link ||
+    (robotData?.robot_id
+      ? `${typeof window !== "undefined" ? window.location.origin : ""}/robots/${robotData.robot_id}`
+      : "");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function buildQr() {
+      if (!qrValue) {
+        setQrDataUrl(null);
+        return;
+      }
+
+      try {
+        const dataUrl = await QRCode.toDataURL(qrValue, {
+          width: 720,
+          margin: 2,
+          errorCorrectionLevel: "M",
+          color: {
+            dark: "#000000",
+            light: "#ffffff",
+          },
+        });
+
+        if (!cancelled) {
+          setQrDataUrl(dataUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          setQrDataUrl(null);
+        }
+      }
+    }
+
+    buildQr();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [qrValue]);
+
   return (
     <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
         <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">Identificación y datos técnicos</h2>
+          <Breadcrumbs 
+            items={[
+              { label: "Robots", href: "/robots/mine" },
+              { label: robotData?.nombre || `#${id}` }
+            ]} 
+          />
           <b className="text-lg tracking-wide text-brand-text">{isLoading ? 'Cargando...' : robotData?.nombre || 'Robot no encontrado'}</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
-            Dashboard
-          </Link>
           <Link href="/robots/mine" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
             Mis Robots
           </Link>
@@ -58,7 +109,7 @@ export default function RobotViewerPage() {
       
       <div className="p-6 md:p-8">
         {isLoading ? (
-          <div className="animate-pulse bg-brand-bg/25 rounded-xl h-[300px] w-full border border-brand-neon/20"></div>
+          <SkeletonRobotProfile />
         ) : error || !robot ? (
           <div className="flex flex-col items-center justify-center min-h-[300px] text-center w-full">
             <b className="text-brand-hot text-xl mb-2">Error 404</b>
@@ -146,14 +197,17 @@ export default function RobotViewerPage() {
 
              <div className="flex flex-col items-center gap-4">
                  {robotData?.foto_url ? (
-                    <div className="w-full rounded-2xl overflow-hidden border border-brand-neon/20 bg-brand-bg/40 aspect-square">
-                       <img 
-                          src={robotData.foto_url} 
+                     <div className="w-full rounded-2xl overflow-hidden border border-brand-neon/20 bg-brand-bg/40 aspect-square">
+                        <Image
+                          src={robotData.foto_url}
                           alt={robotData.nombre}
+                          width={1024}
+                          height={1024}
                           className="w-full h-full object-cover"
-                       />
-                    </div>
-                 ) : (
+                          unoptimized
+                        />
+                     </div>
+                  ) : (
                     <div className="w-full rounded-2xl border border-brand-neon/20 bg-brand-bg/40 aspect-square flex items-center justify-center">
                        <svg className="w-16 h-16 text-brand-muted/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -161,14 +215,20 @@ export default function RobotViewerPage() {
                     </div>
                  )}
                  <div className="w-full bg-white rounded-2xl p-4 flex flex-col items-center shadow-[0_0_30px_rgba(122,63,255,0.2)]">
-                     <svg width="180" height="180" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="100" height="100" fill="white"/>
-                        <path d="M10 10H40V40H10V10ZM20 20V30H30V20H20Z" fill="black"/>
-                        <path d="M60 10H90V40H60V10ZM70 20V30H80V20H70Z" fill="black"/>
-                        <path d="M10 60H40V90H10V60ZM20 70V80H30V70H20Z" fill="black"/>
-                        <path d="M50 10H55V20H50V10ZM55 20H60V40H55V20ZM45 45H55V55H45V45ZM10 45H40V55H10V45ZM60 45H90V55H60V45ZM40 60H60V90H40V60ZM60 60H90V70H60V60ZM60 80H90V90H60V80Z" fill="black"/>
-                        <rect x="70" y="70" width="10" height="10" fill="black"/>
-                     </svg>
+                     {qrDataUrl ? (
+                      <Image
+                        src={qrDataUrl}
+                        alt={`QR del robot ${robotData?.robot_id}`}
+                        width={180}
+                        height={180}
+                        className="w-[180px] h-[180px]"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-[180px] h-[180px] rounded-xl border border-slate-300 bg-slate-100 flex items-center justify-center text-center px-3 text-slate-600 text-xs">
+                        No se pudo generar el QR
+                      </div>
+                    )}
                  </div>
                  <div className="w-full text-center">
                     <button className="w-full border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-6 py-3 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">

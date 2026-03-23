@@ -824,7 +824,6 @@ function getRoundTitle(ri: number, totalRounds: number): string {
   if (roundsFromEnd === 0) return "Final";
   if (roundsFromEnd === 1) return "Semifinales";
   if (roundsFromEnd === 2) return "Cuartos de Final";
-  const remaining = Math.pow(2, roundsFromEnd);
   return `Octavos de Final`;
 }
 

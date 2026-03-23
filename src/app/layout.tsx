@@ -4,6 +4,7 @@ import "./globals.css";
 import { Topbar } from "@/components/layout/topbar";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
             <main className="flex-1 w-full h-full">
               {children}
             </main>
+            <ScrollToTop />
           </Providers>
         </div>
         <Toaster theme="dark" position="bottom-right" />

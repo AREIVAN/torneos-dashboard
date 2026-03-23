@@ -14,7 +14,6 @@ import {
   incWinBO3,
   incWinBO3Losers,
   clearMatchBO3,
-  setWinnerBO3,
   shuffleArray,
   propagateWinnerToLosers,
   advanceWinnersChampionToGrandFinal,

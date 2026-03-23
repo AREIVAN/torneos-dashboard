@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getEvents, type CalendarEvent } from "../api/getEvents";
@@ -8,6 +7,8 @@ import { evBuildFilterChips, evPickDate, evGenerateICS } from "../lib/eventUtils
 import { CalendarEventList } from "./CalendarEventList";
 import { TournamentProfile } from "./TournamentProfile";
 import { AddEventModal } from "./AddEventModal";
+import { SkeletonEventCard } from "@/components/ui/skeleton";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 
 export function CalendarPage() {
   const [query, setQuery] = useState("");
@@ -67,20 +68,12 @@ export function CalendarPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
         <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">
-            Calendario
-          </h2>
+          <Breadcrumbs items={[{ label: "Calendario" }]} />
           <b className="text-lg tracking-wide text-brand-text">
             Directorio de torneos · próximos y anteriores
           </b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link
-            href="/"
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
-          >
-            Volver
-          </Link>
           <button
             onClick={() => {
               void refetch();
@@ -160,8 +153,23 @@ export function CalendarPage() {
 
         {/* Main grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-brand-muted text-sm">
-            Cargando eventos…
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-[18px] border border-brand-stroke/20 bg-brand-bg/35 overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-brand-stroke/20 flex flex-col gap-1 bg-brand-panel/40">
+                <h2 className="text-sm uppercase text-brand-muted tracking-wide m-0">
+                  Próximos
+                </h2>
+                <b className="text-lg text-brand-text">Con conteo regresivo</b>
+              </div>
+              <div className="p-3 flex flex-col gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <SkeletonEventCard key={i} />
+                ))}
+              </div>
+            </div>
+            <div className="rounded-[18px] border border-brand-stroke/20 bg-brand-bg/35 p-4">
+              <SkeletonEventCard />
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

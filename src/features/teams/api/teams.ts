@@ -18,7 +18,7 @@ export async function fetchTeams(): Promise<Team[]> {
 
 export interface TeamRobot {
   robot_id: string;
-  data: Record<string, any> | null;
+  data: Record<string, unknown> | null;
   updated_at: string;
 }
 

@@ -1,11 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import type { CalendarEvent } from "../api/getEvents";
 import {
   evAllChips,
   evFmtDate,
-  evArr,
-  evMainCategory,
   evMapsLink,
 } from "../lib/eventUtils";
 
@@ -79,10 +78,13 @@ export function TournamentProfile({ event }: Props) {
         {/* Poster */}
         <div className="rounded-xl border border-brand-stroke/20 bg-brand-bg/25 min-h-[180px] flex items-center justify-center overflow-hidden">
           {poster ? (
-            <img
+            <Image
               src={poster}
               alt="Poster"
+              width={1200}
+              height={900}
               className="w-full h-auto object-contain max-h-[300px]"
+              unoptimized
             />
           ) : (
             <span className="text-brand-muted text-sm">Poster</span>

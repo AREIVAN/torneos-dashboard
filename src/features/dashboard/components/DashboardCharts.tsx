@@ -2,8 +2,7 @@
 
 import ReactECharts from 'echarts-for-react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
-import { startOfMonth, subMonths, format } from 'date-fns';
+import { subMonths, format } from 'date-fns';
 
 export function DashboardCharts() {
   const { data: chartData } = useQuery({

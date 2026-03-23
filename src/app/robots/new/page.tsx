@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react/no-children-prop */
 
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { useRobotStore } from "@/store/useRobotStore";
 import { supabase } from "@/lib/supabase/client";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 
 const robotSchema = z.object({
   nombre: z.string().min(1, "Obligatorio").max(24, "Máximo 24 caracteres"),
@@ -26,6 +28,20 @@ const robotSchema = z.object({
 });
 
 type FormValues = z.infer<typeof robotSchema>;
+
+function formatFieldErrors(errors: unknown[] | undefined): string {
+  if (!errors || errors.length === 0) return "";
+  return errors
+    .map((error) => {
+      if (typeof error === "string") return error;
+      if (error && typeof error === "object" && "message" in error) {
+        const message = (error as { message?: unknown }).message;
+        return typeof message === "string" ? message : "Valor inválido";
+      }
+      return "Valor inválido";
+    })
+    .join(", ");
+}
 
 export default function NewRobotPage() {
   const router = useRouter();
@@ -58,25 +74,14 @@ export default function NewRobotPage() {
         if (ridError || !ridData) throw new Error("No se pudo obtener el ID del robot");
         
         const robotId = String(ridData).padStart(4, "0");
+        const qrLink = `${window.location.origin}/robots/${robotId}`;
 
         const { error } = await supabase.from("robot_cards").insert([
           {
             robot_id: robotId,
-            robot_nombre: value.nombre,
-            categoria: value.categoria,
-            equipo: value.equipo,
-            controlador: value.controlador,
-            escuela: value.escuela,
-            peso_g: value.peso_g || null,
-            dimensiones_mm: value.dimensiones_mm || null,
-            tipo_control: value.tipo_control || null,
-            frecuencia_protocolo: value.frecuencia_protocolo || null,
-            contacto: value.contacto || null,
-            inspeccion_estado: value.inspeccion_estado || 'pendiente',
-            inspeccion_checklist: value.inspeccion_checklist || null,
-            foto_url: value.foto_url || null,
-            logo_url: value.logo_url || null,
-            data: JSON.stringify({
+            qr_link: qrLink,
+            qr_offline: qrLink,
+            data: {
               i: robotId,
               n: value.nombre,
               c: value.categoria,
@@ -89,8 +94,9 @@ export default function NewRobotPage() {
               f: value.frecuencia_protocolo || null,
               k: value.contacto || null,
               a: value.inspeccion_estado || 'pendiente',
+              q: qrLink,
               v: 1,
-            }),
+            },
           },
         ]);
 
@@ -99,8 +105,12 @@ export default function NewRobotPage() {
         addMine(robotId);
         toast.success("Robot registrado exitosamente. ID: " + robotId);
         router.push(`/robots/${robotId}`);
-      } catch (err: any) {
-        toast.error("Error al registrar: " + (err.message || "Intenta nuevamente"));
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message?: unknown }).message ?? "Intenta nuevamente")
+            : "Intenta nuevamente";
+        toast.error("Error al registrar: " + message);
       }
     },
   });
@@ -111,13 +121,10 @@ export default function NewRobotPage() {
       <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
           <div className="flex flex-col gap-1">
-            <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">Datos para el QR</h2>
-            <b className="text-lg tracking-wide text-brand-text">Robot</b>
+            <Breadcrumbs items={[{ label: "Registrar Robot" }]} />
+            <b className="text-lg tracking-wide text-brand-text">Nuevo Robot</b>
           </div>
           <div className="flex gap-2.5">
-            <button type="button" onClick={() => router.back()} className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
-              Volver
-            </button>
             <form.Subscribe
               selector={(state) => [state.canSubmit, state.isSubmitting]}
               children={([canSubmit, isSubmitting]) => (
@@ -157,7 +164,7 @@ export default function NewRobotPage() {
                     maxLength={24}
                     className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
                   />
-                  {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{field.state.meta.errors.map((e: any) => typeof e === 'string' ? e : e.message).join(", ")}</p> : null}
+                  {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{formatFieldErrors(field.state.meta.errors)}</p> : null}
                 </div>
               )}
             />
@@ -180,7 +187,7 @@ export default function NewRobotPage() {
                     <option value="Seguidor de línea">Seguidor de línea</option>
                     <option value="Otro">Otro</option>
                   </select>
-                  {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{field.state.meta.errors.map((e: any) => typeof e === 'string' ? e : e.message).join(", ")}</p> : null}
+                  {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{formatFieldErrors(field.state.meta.errors)}</p> : null}
                 </div>
               )}
             />

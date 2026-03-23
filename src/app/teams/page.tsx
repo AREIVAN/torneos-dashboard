@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTeams, fetchTeamRobots, type Team, type TeamRobot } from "@/features/teams/api/teams";
+import { fetchTeams, fetchTeamRobots } from "@/features/teams/api/teams";
+import { SkeletonTeamItem, SkeletonRobotCard } from "@/components/ui/skeleton";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function TeamsPage() {
   const [search, setSearch] = useState("");
@@ -37,13 +40,10 @@ export default function TeamsPage() {
     <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
         <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">Equipos</h2>
+          <Breadcrumbs items={[{ label: "Equipos" }]} />
           <b className="text-lg tracking-wide text-brand-text">Teams</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
-            Volver
-          </Link>
           <button
             onClick={() => {
               // Trigger refetch by clearing cache
@@ -73,9 +73,17 @@ export default function TeamsPage() {
           />
 
           {teamsLoading ? (
-            <div className="text-brand-muted text-sm py-4 text-center">Cargando equipos…</div>
+            <div className="flex flex-col gap-2">
+              {[...Array(6)].map((_, i) => (
+                <SkeletonTeamItem key={i} />
+              ))}
+            </div>
           ) : filteredTeams.length === 0 ? (
-            <div className="text-brand-muted text-sm py-4 text-center">No hay equipos que coincidan.</div>
+            <EmptyState
+              icon="search"
+              title="Sin resultados"
+              description="No hay equipos que coincidan con tu búsqueda."
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {filteredTeams.map((t) => (
@@ -99,9 +107,27 @@ export default function TeamsPage() {
         {/* RIGHT: Team detail + robots */}
         <div className="rounded-[18px] border border-brand-neon/22 bg-brand-bg/18 p-3">
           {!effectiveSelectedId ? (
-            <div className="text-brand-muted text-sm py-4 text-center">Selecciona un equipo para ver sus robots.</div>
+            <EmptyState
+              icon="team"
+              title="Selecciona un equipo"
+              description="Elige un equipo de la lista para ver sus robots."
+            />
           ) : robotsLoading ? (
-            <div className="text-brand-muted text-sm py-4 text-center">Cargando robots…</div>
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-2.5 mb-3">
+                <div>
+                  <SkeletonTeamItem />
+                </div>
+                <div className="text-brand-muted text-sm text-right shrink-0">
+                  Robots: <b className="text-brand-text">...</b>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {[...Array(3)].map((_, i) => (
+                  <SkeletonRobotCard key={i} />
+                ))}
+              </div>
+            </div>
           ) : (
             <>
               {selectedTeam && (
@@ -117,13 +143,20 @@ export default function TeamsPage() {
               )}
 
               {robots.length === 0 ? (
-                <div className="text-brand-muted text-sm py-4 text-center">Este equipo aún no tiene robots registrados.</div>
+                <EmptyState
+                  icon="robot"
+                  title="Sin robots"
+                  description="Este equipo aún no tiene robots registrados."
+                />
               ) : (
                 <div className="flex flex-col gap-2">
                   {robots.map((r) => {
-                    const o = r.data || {};
-                    const name = o.n || r.robot_id;
-                    const cat = o.c || "—";
+                    const o = (r.data && typeof r.data === "object" ? r.data : {}) as {
+                      n?: unknown;
+                      c?: unknown;
+                    };
+                    const name = typeof o.n === "string" && o.n ? o.n : r.robot_id;
+                    const cat = typeof o.c === "string" && o.c ? o.c : "—";
                     return (
                       <div
                         key={r.robot_id}

@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { useTournamentStore } from "../store/useTournamentStore";
+import { useDbTournamentStore } from "../store/useDbTournamentStore";
 import { searchRobots, robotLabel } from "../api/searchRobots";
 import { CATEGORIES } from "../lib/types";
 import type { Player } from "../lib/types";
 import { toast } from "sonner";
 
-export default function TournamentPanel() {
+interface TournamentPanelProps {
+  useDatabase?: boolean;
+}
+
+export default function TournamentPanel({ useDatabase = false }: TournamentPanelProps) {
+  // Select the appropriate store based on prop
+  const localStore = useTournamentStore();
+  const dbStore = useDbTournamentStore();
+  
+  const store = useDatabase ? dbStore : localStore;
+  
   const {
     tournament,
     players,
@@ -16,7 +27,7 @@ export default function TournamentPanel() {
     removePlayer,
     reorderPlayer,
     shufflePlayers,
-  } = useTournamentStore();
+  } = store;
 
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<

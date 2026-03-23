@@ -5,6 +5,8 @@ import { useRobotStore } from "@/store/useRobotStore";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { extractRobotFields } from '@/lib/robotHelpers';
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function MisRobotsPage() {
   const mineIds = useRobotStore((state) => state.mineIds);
@@ -28,14 +30,11 @@ export default function MisRobotsPage() {
     <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
         <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-sm tracking-wide uppercase text-brand-muted">Registros Locales</h2>
+          <Breadcrumbs items={[{ label: "Mis Robots" }]} />
           <b className="text-lg tracking-wide text-brand-text">Mis Robots</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
-            Volver
-          </Link>
-          <button onClick={() => { if(confirm("¿Estás seguro de limpiar la lista local? No se borrarán de la base de datos.")) clearMine() }} className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button onClick={() => { if(confirm("¿Estás seguro de limpiar la lista local? No se borrarán de la base de datos.")) clearMine() }} className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
             Limpiar Lista
           </button>
         </div>
@@ -43,9 +42,13 @@ export default function MisRobotsPage() {
       
       <div className="p-4">
         {mineIds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[300px] text-center border border-dashed border-brand-stroke/40 rounded-[22px] bg-brand-bg/20">
-            <span className="text-brand-muted mb-2">Aún no has registrado ningún robot desde este navegador.</span>
-            <Link href="/robots/new" className="text-brand-neon text-sm font-bold mt-2">Registrar mi primer robot →</Link>
+          <div className="border border-dashed border-brand-stroke/40 rounded-[22px] bg-brand-bg/20">
+            <EmptyState
+              icon="robot"
+              title="Sin robots registrados"
+              description="Aún no has registrado ningún robot desde este navegador."
+              action={{ label: "Registrar mi primer robot", href: "/robots/new" }}
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       { success: false, error: 'Credenciales inválidas' },
       { status: 401 }
     );
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Bad Request' },
       { status: 400 }

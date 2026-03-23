@@ -1,7 +1,7 @@
 "use client";
 
-import { useTournamentStore } from "../store/useTournamentStore";
-import type { Match, Bracket, DoubleStructure } from "../lib/types";
+import { useDbTournamentStore } from "../store/useDbTournamentStore";
+import type { Bracket, DoubleStructure, Match } from "../lib/types";
 import { isBye } from "../lib/bracketUtils";
 import BracketVisualizer from "./BracketVisualizer";
 
@@ -27,12 +27,8 @@ function MatchCard({
         }`}
       >
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold text-brand-text truncate">
-            {m.a.name}
-          </div>
-          {aLine && (
-            <div className="text-xs text-brand-muted truncate">{aLine}</div>
-          )}
+          <div className="text-sm font-bold text-brand-text truncate">{m.a.name}</div>
+          {aLine && <div className="text-xs text-brand-muted truncate">{aLine}</div>}
         </div>
         <div
           className={`px-2.5 py-1 rounded-xl border text-sm font-black ${
@@ -51,12 +47,8 @@ function MatchCard({
         }`}
       >
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold text-brand-text truncate">
-            {m.b.name}
-          </div>
-          {bLine && (
-            <div className="text-xs text-brand-muted truncate">{bLine}</div>
-          )}
+          <div className="text-sm font-bold text-brand-text truncate">{m.b.name}</div>
+          {bLine && <div className="text-xs text-brand-muted truncate">{bLine}</div>}
         </div>
         <div
           className={`px-2.5 py-1 rounded-xl border text-sm font-black ${
@@ -116,9 +108,7 @@ function RoundColumn({
         <span className="text-xs uppercase tracking-wider text-brand-muted/70">
           {title}
         </span>
-        <span className="text-xs font-mono text-brand-muted/50">
-          {matches.length} matches
-        </span>
+        <span className="text-xs font-mono text-brand-muted/50">{matches.length} matches</span>
       </div>
       <div className="flex flex-col gap-3">
         {matches.map((m, mi) => (
@@ -153,11 +143,11 @@ function BracketColumns({
         bracketId={bracketId}
         viewMode={viewMode}
         onWin={(ri, mi, side) => {
-          const { toggleMatchWin } = useTournamentStore.getState();
+          const { toggleMatchWin } = useDbTournamentStore.getState();
           toggleMatchWin(bracketId || "main", ri, mi, side);
         }}
         onClear={(ri, mi) => {
-          const { clearMatch } = useTournamentStore.getState();
+          const { clearMatch } = useDbTournamentStore.getState();
           clearMatch(bracketId || "main", ri, mi);
         }}
       />
@@ -167,10 +157,7 @@ function BracketColumns({
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 custom-scroll">
       {bracket.rounds.map((matches, ri) => {
-        const title =
-          ri === bracket.rounds.length - 1
-            ? "Final"
-            : `Ronda ${ri + 1}`;
+        const title = ri === bracket.rounds.length - 1 ? "Final" : `Ronda ${ri + 1}`;
         return (
           <RoundColumn
             key={ri}
@@ -178,11 +165,11 @@ function BracketColumns({
             title={title}
             viewMode={viewMode}
             onWin={(mi, side) => {
-              const { toggleMatchWin } = useTournamentStore.getState();
+              const { toggleMatchWin } = useDbTournamentStore.getState();
               toggleMatchWin(bracketId || "main", ri, mi, side);
             }}
             onClear={(mi) => {
-              const { clearMatch } = useTournamentStore.getState();
+              const { clearMatch } = useDbTournamentStore.getState();
               clearMatch(bracketId || "main", ri, mi);
             }}
           />
@@ -193,7 +180,7 @@ function BracketColumns({
 }
 
 function GroupsView() {
-  const { view, viewMode, viewStyle } = useTournamentStore();
+  const { view, viewMode, viewStyle } = useDbTournamentStore();
 
   if (!view || view.type !== "groups" || !view.groups) return null;
 
@@ -202,9 +189,7 @@ function GroupsView() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-3">
-          Grupos
-        </div>
+        <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-3">Grupos</div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {groups.map((group, gi) => (
             <div
@@ -222,16 +207,10 @@ function GroupsView() {
                   className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-brand-panel/30 border border-brand-stroke/10 mb-1"
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-xs font-mono text-brand-muted/50 w-5">
-                      {pi + 1}.
-                    </span>
-                    <span className="text-sm font-bold text-brand-text truncate">
-                      {p.n || "—"}
-                    </span>
+                    <span className="text-xs font-mono text-brand-muted/50 w-5">{pi + 1}.</span>
+                    <span className="text-sm font-bold text-brand-text truncate">{p.n || "-"}</span>
                   </div>
-                  <span className="text-xs text-brand-muted truncate ml-2">
-                    {p.t || "—"}
-                  </span>
+                  <span className="text-xs text-brand-muted truncate ml-2">{p.t || "-"}</span>
                 </div>
               ))}
             </div>
@@ -241,9 +220,7 @@ function GroupsView() {
 
       {finalBracket && (
         <div>
-          <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-3">
-            Fase Final
-          </div>
+          <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-3">Fase Final</div>
           <BracketColumns
             bracket={finalBracket}
             bracketId="final"
@@ -263,7 +240,7 @@ function GrandFinalView({
   dbl: DoubleStructure;
   viewMode: "organizer" | "competitor";
 }) {
-  const { toggleMatchWin, clearMatch } = useTournamentStore();
+  const { toggleMatchWin, clearMatch } = useDbTournamentStore();
 
   const handleWin = (gfIndex: number, side: "a" | "b") => {
     toggleMatchWin("gf", gfIndex, gfIndex, side);
@@ -275,9 +252,7 @@ function GrandFinalView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-2">
-        Grand Final
-      </div>
+      <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-2">Grand Final</div>
       {dbl.grandFinal.map((gf: Match, gfi: number) => {
         const isReset = gfi > 0;
 
@@ -315,7 +290,6 @@ function LosersBracketView({
   viewMode: "organizer" | "competitor";
   viewStyle: "columns" | "map";
 }) {
-  // Usar BracketColumns para losers, igual que winners
   return (
     <BracketColumns
       bracket={dbl.losers}
@@ -327,32 +301,24 @@ function LosersBracketView({
 }
 
 function ChampionBanner({ championId }: { championId: string }) {
-  const players = useTournamentStore((s) => s.players);
+  const players = useDbTournamentStore((s) => s.players);
   const champion = players.find((p) => p.i === championId);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-gradient-to-br from-brand-panel to-brand-panel2 border-2 border-brand-neon/50 rounded-3xl p-8 text-center shadow-[0_0_60px_rgba(47,230,255,0.3)] max-w-md mx-4">
         <div className="text-6xl mb-4">🏆</div>
-        <div className="text-xs uppercase tracking-widest text-brand-neon mb-2">
-          CAMPEÓN
-        </div>
-        <div className="text-2xl font-black text-brand-text mb-1">
-          {champion?.n || championId}
-        </div>
-        {champion?.t && (
-          <div className="text-sm text-brand-muted mb-4">{champion.t}</div>
-        )}
-        <div className="text-xs text-brand-muted/60 mt-4">
-          Double Elimination Champion
-        </div>
+        <div className="text-xs uppercase tracking-widest text-brand-neon mb-2">CAMPEON</div>
+        <div className="text-2xl font-black text-brand-text mb-1">{champion?.n || championId}</div>
+        {champion?.t && <div className="text-sm text-brand-muted mb-4">{champion.t}</div>}
+        <div className="text-xs text-brand-muted/60 mt-4">Double Elimination Champion</div>
       </div>
     </div>
   );
 }
 
 function DoubleView() {
-  const { view, viewMode, viewStyle } = useTournamentStore();
+  const { view, viewMode, viewStyle } = useDbTournamentStore();
 
   if (!view || view.type !== "double" || !view.dbl) return null;
 
@@ -361,9 +327,7 @@ function DoubleView() {
 
   return (
     <div className="relative">
-      {isResolved && dbl.champion && (
-        <ChampionBanner championId={dbl.champion} />
-      )}
+      {isResolved && dbl.champion && <ChampionBanner championId={dbl.champion} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
         <div className="flex flex-col gap-4">
@@ -399,17 +363,19 @@ function DoubleView() {
   );
 }
 
-export default function BracketView() {
+export default function DbBracketView() {
   const {
     tournament,
     view,
-    viewMode,
     viewStyle,
     generate,
+    shufflePlayers,
     clearView,
+    viewMode,
     setViewMode,
     setViewStyle,
-  } = useTournamentStore();
+    syncError,
+  } = useDbTournamentStore();
 
   const viewTitle =
     tournament.format === "groups"
@@ -422,17 +388,21 @@ export default function BracketView() {
     <div className="rounded-[18px] border border-brand-stroke/20 bg-brand-bg/35 overflow-hidden flex flex-col">
       <div className="px-4 py-3 border-b border-brand-stroke/20 flex flex-wrap items-center justify-between gap-3 bg-brand-panel/40">
         <div className="flex flex-col gap-1">
-          <h2 className="text-sm uppercase text-brand-muted tracking-wide m-0">
-            Vista
-          </h2>
+          <h2 className="text-sm uppercase text-brand-muted tracking-wide m-0">Vista</h2>
           <b className="text-lg text-brand-text">{viewTitle}</b>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={generate}
+            onClick={() => void generate()}
             className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
           >
             Generar
+          </button>
+          <button
+            onClick={shufflePlayers}
+            className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
+            Mezclar seeds
           </button>
           <button
             onClick={clearView}
@@ -451,9 +421,7 @@ export default function BracketView() {
             {viewStyle === "columns" ? "Ver mapa" : "Ver columnas"}
           </button>
           <button
-            onClick={() =>
-              setViewMode(viewMode === "organizer" ? "competitor" : "organizer")
-            }
+            onClick={() => setViewMode(viewMode === "organizer" ? "competitor" : "organizer")}
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
               viewMode === "organizer"
                 ? "border border-brand-neon/45 bg-brand-neon/20 text-brand-text"
@@ -466,6 +434,8 @@ export default function BracketView() {
       </div>
 
       <div className="p-4 flex-1 overflow-auto custom-scroll">
+        {syncError && <p className="text-xs text-brand-hot mb-3">{syncError}</p>}
+
         {!view ? (
           <div className="flex flex-col items-center text-center max-w-[300px] mx-auto py-12 opacity-60">
             <svg
@@ -484,10 +454,9 @@ export default function BracketView() {
               <circle cx="6" cy="6" r="3" />
               <path d="M6 21V9a9 9 0 0 0 9 9" />
             </svg>
-            <b className="text-brand-text mb-1">Brackets Vacíos</b>
+            <b className="text-brand-text mb-1">Brackets Vacios</b>
             <p className="text-brand-muted text-sm">
-              Añade al menos 2 competidores y haz clic en &quot;Generar&quot; para
-              construir el árbol del torneo.
+              Anade al menos 2 competidores y haz clic en &quot;Generar&quot; para construir el arbol del torneo.
             </p>
           </div>
         ) : view.type === "single" && view.bracket ? (
