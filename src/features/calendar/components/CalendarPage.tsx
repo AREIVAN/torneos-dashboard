@@ -1,40 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getEvents, type CalendarEvent } from "../api/getEvents";
 import { evBuildFilterChips, evPickDate, evGenerateICS } from "../lib/eventUtils";
 import { CalendarEventList } from "./CalendarEventList";
 import { TournamentProfile } from "./TournamentProfile";
+import { AddEventModal } from "./AddEventModal";
 
 export function CalendarPage() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await getEvents();
-    setEvents(data);
-    // Auto-select first upcoming or first event
-    if (data.length > 0) {
-      const now = new Date();
-      const upcoming = data.find((e) => {
-        const d = evPickDate(e);
-        return d && d >= now;
-      });
-      setSelectedId(String((upcoming || data[0]).id));
-    }
-    setLoading(false);
-  }, []);
+  const { data: events = [], isLoading: loading, refetch } = useQuery<CalendarEvent[]>({
+    queryKey: ["calendar-events"],
+    queryFn: getEvents,
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const now = new Date();
+  const upcoming = events.find((e) => {
+    const d = evPickDate(e);
+    return d && d >= now;
+  });
+  const effectiveSelectedId = selectedId ?? (events.length ? String((upcoming || events[0]).id) : null);
 
-  const selectedEvent = events.find((e) => String(e.id) === selectedId) || null;
+  const selectedEvent = events.find((e) => String(e.id) === effectiveSelectedId) || null;
 
   // Build chip list
   const rows = events.map((t) => ({ t, d: evPickDate(t) })).filter((r) => r.d !== null);
@@ -89,12 +82,17 @@ export function CalendarPage() {
             Volver
           </Link>
           <button
-            onClick={load}
+            onClick={() => {
+              void refetch();
+            }}
             className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
           >
             Actualizar
           </button>
-          <button className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
             Agregar evento
           </button>
         </div>
@@ -177,6 +175,15 @@ export function CalendarPage() {
           </div>
         )}
       </div>
+
+      <AddEventModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          setShowAddModal(false);
+          void refetch();
+        }}
+      />
     </section>
   );
 }
