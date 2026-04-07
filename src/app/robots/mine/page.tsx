@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRobotStore } from "@/store/useRobotStore";
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { extractRobotFields } from '@/lib/robotHelpers';
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -16,7 +16,7 @@ export default function MisRobotsPage() {
     queryKey: ['my-robots', mineIds],
     queryFn: async () => {
       if (mineIds.length === 0) return [];
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseClient()
         .from('robot_cards')
         .select('*')
         .in('robot_id', mineIds);
@@ -55,7 +55,7 @@ export default function MisRobotsPage() {
              {isLoading ? (
                <div className="animate-pulse bg-brand-bg/25 rounded-[18px] min-h-[140px] w-full border border-brand-neon/20"></div>
              ) : (
-               myRobots?.map((robot) => {
+                myRobots?.map((robot: { robot_id: string; [key: string]: unknown }) => {
                  const rd = extractRobotFields(robot);
                  return (
                  <Link href={`/robots/${robot.robot_id}`} key={robot.robot_id} className="block rounded-[18px] border border-brand-neon/20 bg-brand-bg/25 p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px">

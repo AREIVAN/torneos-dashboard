@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { useRobotStore } from "@/store/useRobotStore";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 
 const robotSchema = z.object({
@@ -70,13 +70,13 @@ export default function NewRobotPage() {
     },
     onSubmit: async ({ value }) => {
       try {
-        const { data: ridData, error: ridError } = await supabase.rpc("reserve_robot_id");
+        const { data: ridData, error: ridError } = await getSupabaseClient().rpc("reserve_robot_id");
         if (ridError || !ridData) throw new Error("No se pudo obtener el ID del robot");
         
         const robotId = String(ridData).padStart(4, "0");
         const qrLink = `${window.location.origin}/robots/${robotId}`;
 
-        const { error } = await supabase.from("robot_cards").insert([
+        const { error } = await getSupabaseClient().from("robot_cards").insert([
           {
             robot_id: robotId,
             qr_link: qrLink,

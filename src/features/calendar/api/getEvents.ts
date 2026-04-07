@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export interface CalendarEvent {
   id: string;
@@ -24,7 +24,7 @@ export interface CalendarEvent {
 }
 
 export async function getEvents(): Promise<CalendarEvent[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("events")
     .select("*")
     .eq("is_public", true)

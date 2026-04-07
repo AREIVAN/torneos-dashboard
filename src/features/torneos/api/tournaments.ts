@@ -3,7 +3,7 @@
  * CRUD operations for tournament management
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type {
   DbTournament,
   DbTournamentInsert,
@@ -20,7 +20,7 @@ import type {
 export async function createTournament(
   data: DbTournamentInsert
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const { data: tournament, error } = await supabase
+  const { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
     .insert(data)
     .select()
@@ -41,7 +41,7 @@ export async function createTournament(
 export async function getTournament(
   id: string
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const { data: tournament, error } = await supabase
+  const { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
     .select('*')
     .eq('id', id)
@@ -58,7 +58,7 @@ export async function getTournament(
 export async function getTournamentWithParticipants(
   id: string
 ): Promise<{ data: TournamentWithParticipants | null; error: Error | null }> {
-  const { data: tournament, error: tournamentError } = await supabase
+  const { data: tournament, error: tournamentError } = await getSupabaseClient()
     .from('tournaments')
     .select('*')
     .eq('id', id)
@@ -69,7 +69,7 @@ export async function getTournamentWithParticipants(
     return { data: null, error: new Error(tournamentError.message) };
   }
 
-  const { data: participants, error: participantsError } = await supabase
+  const { data: participants, error: participantsError } = await getSupabaseClient()
     .from('tournament_participants')
     .select('*')
     .eq('tournament_id', id)
@@ -91,19 +91,19 @@ export async function getTournamentWithDetails(
 ): Promise<{ data: TournamentWithDetails | null; error: Error | null }> {
   // Fetch all data in parallel
   const [tournamentRes, participantsRes, matchesRes, standingsRes] = await Promise.all([
-    supabase.from('tournaments').select('*').eq('id', id).single(),
-    supabase
+    getSupabaseClient().from('tournaments').select('*').eq('id', id).single(),
+    getSupabaseClient()
       .from('tournament_participants')
       .select('*')
       .eq('tournament_id', id)
       .order('seed', { ascending: true, nullsFirst: false }),
-    supabase
+    getSupabaseClient()
       .from('matches')
       .select('*')
       .eq('tournament_id', id)
       .order('round_index', { ascending: true })
       .order('match_index', { ascending: true }),
-    supabase
+    getSupabaseClient()
       .from('standings')
       .select('*')
       .eq('tournament_id', id)
@@ -132,7 +132,7 @@ export async function getTournaments(options?: {
   limit?: number;
   offset?: number;
 }): Promise<{ data: DbTournament[]; error: Error | null; count: number }> {
-  let query = supabase
+  let query = getSupabaseClient()
     .from('tournaments')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false });
@@ -177,7 +177,7 @@ export async function updateTournament(
   id: string,
   data: DbTournamentUpdate
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const { data: tournament, error } = await supabase
+  const { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
     .update(data)
     .eq('id', id)
@@ -213,7 +213,7 @@ export async function saveBracketData(
 export async function deleteTournament(
   id: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('tournaments')
     .delete()
     .eq('id', id);

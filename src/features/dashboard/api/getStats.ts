@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 export type DashboardStats = {
   total: number;
@@ -7,8 +7,8 @@ export type DashboardStats = {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [{ count: total }, { count: today }] = await Promise.all([
-    supabase.from('robot_cards').select('*', { count: 'exact', head: true }),
-    supabase.from('robot_cards')
+    getSupabaseClient().from('robot_cards').select('*', { count: 'exact', head: true }),
+    getSupabaseClient().from('robot_cards')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
   ]);

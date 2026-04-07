@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { TournamentWithDetails } from "@/lib/supabase/database.types";
 import {
   getTournamentWithDetails,
@@ -61,7 +61,7 @@ export default function TournamentDetailPage() {
   useEffect(() => {
     if (!tournamentId) return;
 
-    const channel = supabase
+    const channel = getSupabaseClient()
       .channel(`tournament-live-${tournamentId}`)
       .on(
         "postgres_changes",
@@ -102,7 +102,7 @@ export default function TournamentDetailPage() {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void getSupabaseClient().removeChannel(channel);
     };
   }, [tournamentId, loadTournament]);
 

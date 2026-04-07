@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 export interface Team {
   id: string;
@@ -8,7 +8,7 @@ export interface Team {
 }
 
 export async function fetchTeams(): Promise<Team[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('teams')
     .select('id,name,school,slug')
     .order('name', { ascending: true });
@@ -23,7 +23,7 @@ export interface TeamRobot {
 }
 
 export async function fetchTeamRobots(teamId: string): Promise<TeamRobot[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('robot_cards')
     .select('robot_id,data,updated_at')
     .eq('team_id', teamId)

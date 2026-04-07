@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { CalendarEvent } from "./getEvents";
 
 export interface CreateEventInput {
@@ -60,7 +60,7 @@ export async function createEvent(input: CreateEventInput): Promise<CreateEventR
     is_public: input.is_public ?? true,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("events")
     .insert([eventData])
     .select()

@@ -3,7 +3,7 @@
  * Handle match scoring and retrieval
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type {
   DbMatch,
   DbMatchInsert,
@@ -19,7 +19,7 @@ import type { Bracket, Match, ViewState } from '../lib/types';
 export async function createMatch(
   data: DbMatchInsert
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
-  const { data: match, error } = await supabase
+  const { data: match, error } = await getSupabaseClient()
     .from('matches')
     .insert(data)
     .select()
@@ -40,7 +40,7 @@ export async function createMatches(
     return { data: [], error: null };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('matches')
     .insert(matches)
     .select();
@@ -60,7 +60,7 @@ export async function createMatches(
 export async function getMatch(
   id: string
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('matches')
     .select('*')
     .eq('id', id)
@@ -83,7 +83,7 @@ export async function getTournamentMatches(
     includeCompleted?: boolean;
   }
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
-  let query = supabase
+  let query = getSupabaseClient()
     .from('matches')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -120,7 +120,7 @@ export async function getMatchesByRobot(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('matches')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -138,7 +138,7 @@ export async function getMatchesByRobot(
 export async function getPendingMatches(
   tournamentId: string
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('matches')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -165,7 +165,7 @@ export async function updateMatch(
   id: string,
   data: DbMatchUpdate
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
-  const { data: match, error } = await supabase
+  const { data: match, error } = await getSupabaseClient()
     .from('matches')
     .update(data)
     .eq('id', id)
@@ -276,7 +276,7 @@ export async function resetMatch(
 export async function deleteMatch(
   id: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('matches')
     .delete()
     .eq('id', id);
@@ -292,7 +292,7 @@ export async function deleteMatch(
 export async function deleteTournamentMatches(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('matches')
     .delete()
     .eq('tournament_id', tournamentId);
@@ -405,7 +405,7 @@ export async function getMatchStats(
   inProgress: number;
   error: Error | null;
 }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('matches')
     .select('winner_id, robot_a_id, robot_b_id, is_bye')
     .eq('tournament_id', tournamentId);
@@ -417,9 +417,9 @@ export async function getMatchStats(
 
   const matches = data || [];
   const total = matches.length;
-  const completed = matches.filter((m) => m.winner_id !== null || m.is_bye).length;
+  const completed = matches.filter((m: DbMatch) => m.winner_id !== null || m.is_bye).length;
   const pending = matches.filter(
-    (m) => !m.winner_id && !m.is_bye && (!m.robot_a_id || !m.robot_b_id)
+    (m: DbMatch) => !m.winner_id && !m.is_bye && (!m.robot_a_id || !m.robot_b_id)
   ).length;
   const inProgress = total - completed - pending;
 

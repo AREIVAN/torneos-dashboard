@@ -1,6 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabaseClient: any = null;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+function getRequiredEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing Supabase environment variable: ${name}`);
+  }
+  return value;
+}
+
+export function getSupabaseClient() {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  const supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseKey = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
+  supabaseClient = createClient(supabaseUrl, supabaseKey);
+  return supabaseClient;
+}

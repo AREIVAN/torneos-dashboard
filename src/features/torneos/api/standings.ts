@@ -3,7 +3,7 @@
  * Calculate and manage tournament standings
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type {
   DbStanding,
   DbStandingInsert,
@@ -18,7 +18,7 @@ import type {
 export async function createStanding(
   data: DbStandingInsert
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
-  const { data: standing, error } = await supabase
+  const { data: standing, error } = await getSupabaseClient()
     .from('standings')
     .insert(data)
     .select()
@@ -39,7 +39,7 @@ export async function createStandings(
     return { data: [], error: null };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('standings')
     .insert(standings)
     .select();
@@ -82,7 +82,7 @@ export async function getStanding(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -107,7 +107,7 @@ export async function getTournamentStandings(
     sortBy?: 'points' | 'wins' | 'final_position';
   }
 ): Promise<{ data: DbStanding[]; error: Error | null }> {
-  let query = supabase
+  let query = getSupabaseClient()
     .from('standings')
     .select('*')
     .eq('tournament_id', tournamentId);
@@ -128,7 +128,7 @@ export async function getTournamentStandings(
   }
 
   // Secondary sort by round differential for tiebreaker
-  const standings = (data || []).sort((a, b) => {
+  const standings = (data || []).sort((a: DbStanding, b: DbStanding) => {
     if (a.points !== b.points) return b.points - a.points;
     const diffA = a.rounds_won - a.rounds_lost;
     const diffB = b.rounds_won - b.rounds_lost;
@@ -142,7 +142,7 @@ export async function getTournamentStandings(
 export async function getGroupStandings(
   tournamentId: string
 ): Promise<{ data: Map<number, DbStanding[]>; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -181,7 +181,7 @@ export async function getGroupStandings(
 export async function getFinalPlacements(
   tournamentId: string
 ): Promise<{ data: DbStanding[]; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -205,7 +205,7 @@ export async function updateStanding(
   robotId: string,
   data: DbStandingUpdate
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
-  const { data: standing, error } = await supabase
+  const { data: standing, error } = await getSupabaseClient()
     .from('standings')
     .update(data)
     .eq('tournament_id', tournamentId)
@@ -310,7 +310,7 @@ export async function deleteStanding(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('standings')
     .delete()
     .eq('tournament_id', tournamentId)
@@ -327,7 +327,7 @@ export async function deleteStanding(
 export async function deleteTournamentStandings(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('standings')
     .delete()
     .eq('tournament_id', tournamentId);
@@ -353,12 +353,12 @@ export async function recalculateStandings(
 ): Promise<{ error: Error | null }> {
   // Get all matches and participants
   const [matchesRes, standingsRes] = await Promise.all([
-    supabase
+    getSupabaseClient()
       .from('matches')
       .select('*')
       .eq('tournament_id', tournamentId)
       .not('winner_id', 'is', null),
-    supabase.from('standings').select('*').eq('tournament_id', tournamentId),
+    getSupabaseClient().from('standings').select('*').eq('tournament_id', tournamentId),
   ]);
 
   if (matchesRes.error) {
@@ -366,7 +366,7 @@ export async function recalculateStandings(
   }
 
   // Reset standings
-  const standingUpdates = (standingsRes.data || []).map((standing) => ({
+  const standingUpdates = (standingsRes.data || []).map((standing: DbStanding) => ({
     tournament_id: standing.tournament_id,
     robot_id: standing.robot_id,
     group_index: standing.group_index,
@@ -424,7 +424,7 @@ export async function recalculateStandings(
   }
 
   // Upsert standings
-  const { error } = await supabase.from('standings').upsert(standingUpdates, {
+  const { error } = await getSupabaseClient().from('standings').upsert(standingUpdates, {
     onConflict: 'tournament_id,robot_id',
   });
 

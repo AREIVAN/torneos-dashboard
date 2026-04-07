@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Player } from "../lib/types";
 
 interface RobotRow {
@@ -26,7 +26,7 @@ export async function searchRobots(
     return [];
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("robot_cards")
     .select("robot_id, data, updated_at, created_at")
     .order("updated_at", { ascending: false })

@@ -4,7 +4,8 @@
  */
 
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase/client';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type { Player, Tournament, ViewState, Bracket } from '../lib/types';
 import type { DbTournament, DbParticipant } from '@/lib/supabase/database.types';
 import {
@@ -633,7 +634,7 @@ export function subscribeToTournament(
   tournamentId: string,
   onUpdate: (data: DbTournament) => void
 ) {
-  const channel = supabase
+  const channel = getSupabaseClient()
     .channel(`tournament-${tournamentId}`)
     .on(
       'postgres_changes',
@@ -643,13 +644,13 @@ export function subscribeToTournament(
         table: 'tournaments',
         filter: `id=eq.${tournamentId}`,
       },
-      (payload) => {
+      (payload: RealtimePostgresChangesPayload<{ [key: string]: unknown }>) => {
         onUpdate(payload.new as DbTournament);
       }
     )
     .subscribe();
 
   return () => {
-    supabase.removeChannel(channel);
+    getSupabaseClient().removeChannel(channel);
   };
 }

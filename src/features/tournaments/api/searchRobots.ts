@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export interface RobotRow {
   robot_id: string;
@@ -15,7 +15,7 @@ export interface RobotRow {
 export async function searchRobots(query: string): Promise<RobotRow[]> {
   if (!query.trim()) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from("robot_cards")
     .select("robot_id, data, updated_at, created_at")
     .order("updated_at", { ascending: false })

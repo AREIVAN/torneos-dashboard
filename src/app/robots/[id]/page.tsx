@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -32,7 +32,7 @@ export default function RobotViewerPage() {
   const { data: robot, isLoading, error } = useQuery({
     queryKey: ['robot', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseClient()
         .from('robot_cards')
         .select('*')
         .eq('robot_id', id)

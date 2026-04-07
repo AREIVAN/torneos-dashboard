@@ -3,7 +3,7 @@
  * Manage robot registration for tournaments
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type {
   DbParticipant,
   DbParticipantInsert,
@@ -27,7 +27,7 @@ export async function addParticipant(
     seed: seed ?? null,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('tournament_participants')
     .insert(insert)
     .select()
@@ -56,7 +56,7 @@ export async function addParticipants(
     seed: robot.seed ?? index + 1,
   }));
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('tournament_participants')
     .insert(inserts)
     .select();
@@ -76,7 +76,7 @@ export async function addParticipants(
 export async function getParticipants(
   tournamentId: string
 ): Promise<{ data: DbParticipant[]; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('tournament_participants')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -94,7 +94,7 @@ export async function getParticipant(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('tournament_participants')
     .select('*')
     .eq('tournament_id', tournamentId)
@@ -115,7 +115,7 @@ export async function getParticipant(
 export async function getParticipantCount(
   tournamentId: string
 ): Promise<{ count: number; error: Error | null }> {
-  const { count, error } = await supabase
+  const { count, error } = await getSupabaseClient()
     .from('tournament_participants')
     .select('*', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId);
@@ -137,7 +137,7 @@ export async function updateParticipantSeed(
   robotId: string,
   seed: number
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('tournament_participants')
     .update({ seed })
     .eq('tournament_id', tournamentId)
@@ -159,7 +159,7 @@ export async function reorderParticipants(
 ): Promise<{ error: Error | null }> {
   // Update seeds based on array order
   const updates = robotIds.map((robotId, index) =>
-    supabase
+    getSupabaseClient()
       .from('tournament_participants')
       .update({ seed: index + 1 })
       .eq('tournament_id', tournamentId)
@@ -185,7 +185,7 @@ export async function removeParticipant(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('tournament_participants')
     .delete()
     .eq('tournament_id', tournamentId)
@@ -202,7 +202,7 @@ export async function removeParticipant(
 export async function removeAllParticipants(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { error } = await getSupabaseClient()
     .from('tournament_participants')
     .delete()
     .eq('tournament_id', tournamentId);
