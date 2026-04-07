@@ -1,5 +1,25 @@
 import type { Player, Bracket, Match, Slot, DoubleStructure } from "./types";
-import type { IRoundProps } from "@oliverlooney/react-brackets";
+
+export interface BracketRoundSeedTeam {
+  name: string;
+  score?: number;
+  winner?: boolean;
+}
+
+export interface BracketRoundSeed {
+  id: string;
+  teams: [BracketRoundSeedTeam, BracketRoundSeedTeam];
+  wa: number;
+  wb: number;
+  winner: "a" | "b" | null;
+  aBye: boolean;
+  bBye: boolean;
+}
+
+export interface BracketRoundView {
+  title: string;
+  seeds: BracketRoundSeed[];
+}
 
 export function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));
@@ -827,10 +847,10 @@ function getRoundTitle(ri: number, totalRounds: number): string {
   return `Octavos de Final`;
 }
 
-export function transformBracketToRounds(bracket: Bracket): IRoundProps[] {
+export function transformBracketToRounds(bracket: Bracket): BracketRoundView[] {
   return bracket.rounds.map((matches, ri) => ({
     title: getRoundTitle(ri, bracket.rounds.length),
-    seeds: matches.map((m) => ({
+    seeds: matches.map((m): BracketRoundSeed => ({
       id: m.id,
       teams: [
         {
