@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { normalizeRobotCategory } from '@/lib/categoryNormalization';
 import type {
   DbParticipant,
   DbParticipantInsert,
@@ -240,7 +241,7 @@ export function playerToRobotData(player: {
     i: player.i,
     n: player.n,
     t: player.t,
-    c: player.c,
+    c: normalizeRobotCategory(player.c),
     p: player.p,
     s: player.s,
     w: player.w,

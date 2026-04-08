@@ -5,6 +5,7 @@ import { getLatestRobots } from "../api/getLatest";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/AnimatedComponents";
+import { normalizeRobotCategory } from "@/lib/categoryNormalization";
 
 interface LatestRobot {
   robot_id: string;
@@ -22,7 +23,7 @@ interface LatestRobot {
 function getRobotDisplay(robot: LatestRobot) {
   const d = robot.data || {};
   const nombre = robot.robot_nombre || d.n || "";
-  const categoria = robot.categoria || d.c || "";
+  const categoria = normalizeRobotCategory(robot.categoria || d.c || "");
   const equipo = robot.equipo || d.t || "";
   return { nombre, categoria, equipo };
 }

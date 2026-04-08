@@ -11,6 +11,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  normalizeRobotCategory,
+  ROBOT_CATEGORY_OPTIONS,
+} from "@/lib/categoryNormalization";
 import { createEvent, type CreateEventInput } from "../api/createEvent";
 
 const ADMIN_KEY = "areivan";
@@ -29,7 +33,7 @@ interface FormData {
   venue: string;
   city: string;
   address: string;
-  categories: string;
+  categories: string[];
   tags: string;
   poster_url: string;
   official_url: string;
@@ -50,7 +54,7 @@ const initialFormData: FormData = {
   venue: "",
   city: "",
   address: "",
-  categories: "",
+  categories: [],
   tags: "",
   poster_url: "",
   official_url: "",
@@ -100,6 +104,21 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
     }));
   };
 
+  const toggleCategory = (category: string, checked: boolean) => {
+    setFormData((prev) => {
+      if (checked) {
+        return {
+          ...prev,
+          categories: [...new Set([...prev.categories, category])],
+        };
+      }
+      return {
+        ...prev,
+        categories: prev.categories.filter((item) => item !== category),
+      };
+    });
+  };
+
   const parseCommaSeparated = (value: string): string[] | null => {
     if (!value.trim()) return null;
     return value
@@ -129,7 +148,10 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
       venue: formData.venue || null,
       city: formData.city || null,
       address: formData.address || null,
-      categories: parseCommaSeparated(formData.categories),
+      categories:
+        formData.categories.length > 0
+          ? formData.categories.map((category) => normalizeRobotCategory(category))
+          : null,
       tags: parseCommaSeparated(formData.tags),
       poster_url: formData.poster_url || null,
       official_url: formData.official_url || null,
@@ -304,17 +326,25 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="categories" className="text-brand-muted text-xs">
-                      Categorías (separadas por coma)
+                    <Label className="text-brand-muted text-xs">
+                      Categorías
                     </Label>
-                    <Input
-                      id="categories"
-                      name="categories"
-                      value={formData.categories}
-                      onChange={handleInputChange}
-                      placeholder="Mini Sumo, Sumo RC, Line Follower"
-                      className="bg-brand-bg/50 border-brand-stroke/30 text-brand-text"
-                    />
+                    <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto rounded-lg border border-brand-stroke/20 bg-brand-bg/35 p-2.5">
+                      {ROBOT_CATEGORY_OPTIONS.map((category) => (
+                        <label
+                          key={category}
+                          className="flex items-center gap-2 text-xs text-brand-text cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.categories.includes(category)}
+                            onChange={(event) => toggleCategory(category, event.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-brand-stroke/40 bg-brand-bg/50"
+                          />
+                          <span>{category}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="tags" className="text-brand-muted text-xs">

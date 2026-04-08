@@ -1,4 +1,9 @@
 import type { CalendarEvent } from "../api/getEvents";
+import {
+  categoriesMatch,
+  normalizeCategoryLookupKey,
+  normalizeRobotCategory,
+} from "@/lib/categoryNormalization";
 
 /** Parse a CSV or array field into a string array */
 export function evArr(v: string | string[] | null | undefined): string[] {
@@ -12,15 +17,25 @@ export function evArr(v: string | string[] | null | undefined): string[] {
 
 /** Get the main category from a tournament */
 export function evMainCategory(t: CalendarEvent): string {
-  const cats = evArr(t.categories);
+  const cats = evArr(t.categories)
+    .map((cat) => normalizeRobotCategory(cat))
+    .filter(Boolean);
   return cats[0] || "";
 }
 
 /** Get all chips (categories + tags) for a tournament */
 export function evAllChips(t: CalendarEvent): string[] {
-  return [evMainCategory(t), ...evArr(t.categories), ...evArr(t.tags)].filter(
-    Boolean
-  );
+  const seen = new Set<string>();
+  const normalizedCategories = evArr(t.categories)
+    .map((cat) => normalizeRobotCategory(cat))
+    .filter(Boolean);
+  const chips = [...normalizedCategories, ...evArr(t.tags)].filter(Boolean);
+  return chips.filter((chip) => {
+    const key = normalizeCategoryLookupKey(chip);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Parse the start date from an event */
@@ -79,7 +94,7 @@ export function evMatchesQuery(t: CalendarEvent, q: string): boolean {
     t.official_url,
     t.registration_url,
     t.rules_url,
-    ...evArr(t.categories),
+    ...evArr(t.categories).map((cat) => normalizeRobotCategory(cat)),
     ...evArr(t.tags),
   ]
     .filter(Boolean)
@@ -91,10 +106,7 @@ export function evMatchesQuery(t: CalendarEvent, q: string): boolean {
 /** Check if a tournament matches a chip filter */
 export function evMatchesChip(t: CalendarEvent, chip: string): boolean {
   if (!chip || chip === "ALL") return true;
-  const all = new Set(
-    evAllChips(t).map((x) => x.toLowerCase())
-  );
-  return all.has(chip.toLowerCase());
+  return evAllChips(t).some((value) => categoriesMatch(value, chip) || value.toLowerCase() === chip.toLowerCase());
 }
 
 /** Build unique filter chips from all events */
@@ -106,7 +118,7 @@ export function evBuildFilterChips(
     for (const v of evAllChips(t)) {
       const s = v.trim();
       if (!s) continue;
-      const key = s.toLowerCase();
+      const key = normalizeCategoryLookupKey(s);
       if (!set.has(key)) set.set(key, s);
     }
   }

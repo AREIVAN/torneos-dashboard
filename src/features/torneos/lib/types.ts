@@ -1,3 +1,8 @@
+import {
+  ROBOT_CATEGORY_OPTIONS,
+  type RobotCategory,
+} from "@/lib/categoryNormalization";
+
 export interface Player {
   i: string;
   n: string;
@@ -91,13 +96,9 @@ export interface TournamentState {
 }
 
 export const CATEGORIES = [
-  "Mini Sumo Autónomo Profesional",
-  "Mini Sumo RC Profesional",
-  "Sumo 3kg",
-  "Mini Sumo RC Amateur",
-  "Mini Sumo Autónomo Amateur",
+  ...ROBOT_CATEGORY_OPTIONS,
 ] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+export type Category = RobotCategory;
 
 export const LOCAL_KEY = "apex_tournament_flex_demo_v2_bo3_map";

@@ -6,6 +6,10 @@
 import { create } from 'zustand';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import {
+  normalizeRobotCategory,
+  ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO,
+} from '@/lib/categoryNormalization';
 import type { Player, Tournament, ViewState, Bracket } from '../lib/types';
 import type { DbTournament, DbParticipant } from '@/lib/supabase/database.types';
 import {
@@ -99,7 +103,7 @@ interface DbTournamentStore {
 
 const defaultTournament: Tournament = {
   name: '',
-  category: 'Mini Sumo Autónomo Profesional',
+  category: ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO,
   venue: '',
   date: '',
   format: 'single',
@@ -432,7 +436,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       // Create tournament in DB
       const { data: dbTournament, error: createError } = await apiCreateTournament({
         name: tournament.name,
-        category: tournament.category,
+        category: normalizeRobotCategory(tournament.category),
         venue: tournament.venue || null,
         date: tournament.date || null,
         format: tournament.format,
@@ -487,7 +491,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       // Convert DB tournament to local format
       const tournament: Tournament = {
         name: data.name,
-        category: data.category || 'Mini Sumo Autónomo Profesional',
+        category: normalizeRobotCategory(data.category || ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO),
         venue: data.venue || '',
         date: data.date || '',
         format: data.format,
@@ -497,7 +501,13 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       };
 
       // Convert participants to players
-      const players: Player[] = data.participants.map((p: DbParticipant) => p.robot_data as Player);
+      const players: Player[] = data.participants.map((p: DbParticipant) => {
+        const player = p.robot_data as Player;
+        return {
+          ...player,
+          c: normalizeRobotCategory(player.c),
+        };
+      });
 
       // Load bracket data
       const view = data.bracket_data as ViewState | null;
@@ -537,7 +547,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       // Update tournament metadata
       await apiUpdateTournament(tournamentId, {
         name: tournament.name,
-        category: tournament.category,
+        category: normalizeRobotCategory(tournament.category),
         venue: tournament.venue || null,
         date: tournament.date || null,
         format: tournament.format,

@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { normalizeCategoryLookupKey, normalizeRobotCategory } from "@/lib/categoryNormalization";
 import type { Player } from "../lib/types";
 
 interface RobotRow {
@@ -15,7 +16,7 @@ export function robotLabel(p: Partial<Player> | null): {
   if (!p) return { name: "—", sub: "—" };
   const name = p.n || p.i || "—";
   const team = p.t || "—";
-  const cat = p.c || "—";
+  const cat = normalizeRobotCategory(p.c) || "—";
   return { name, sub: `${team} · ${cat}` };
 }
 
@@ -39,17 +40,23 @@ export async function searchRobots(
 
   const rows = (data || []) as RobotRow[];
   const qq = query.toLowerCase();
+  const qqCategory = normalizeCategoryLookupKey(query);
 
   return rows
     .filter((r) => {
       const rid = (r.robot_id || "").toLowerCase();
       const n = ((r.data?.n as string) || "").toLowerCase();
       const t = ((r.data?.t as string) || "").toLowerCase();
-      return rid.includes(qq) || n.includes(qq) || t.includes(qq);
+      const c = normalizeCategoryLookupKey((r.data?.c as string) || "");
+      const byCategory = qqCategory ? c.includes(qqCategory) : false;
+      return rid.includes(qq) || n.includes(qq) || t.includes(qq) || byCategory;
     })
     .slice(0, 30)
     .map((r) => ({
       robot_id: r.robot_id,
-      data: r.data as unknown as Player,
+      data: {
+        ...(r.data as unknown as Player),
+        c: normalizeRobotCategory((r.data?.c as string) || ""),
+      },
     }));
 }

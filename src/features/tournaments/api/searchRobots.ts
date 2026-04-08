@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { normalizeCategoryLookupKey, normalizeRobotCategory } from "@/lib/categoryNormalization";
 
 export interface RobotRow {
   robot_id: string;
@@ -27,12 +28,22 @@ export async function searchRobots(query: string): Promise<RobotRow[]> {
   }
 
   const qq = query.toLowerCase();
+  const qqCategory = normalizeCategoryLookupKey(query);
   return (data || [])
     .filter((r: RobotRow) => {
       const rid = (r.robot_id || "").toLowerCase();
       const n = (r?.data?.n || "").toLowerCase();
       const t = (r?.data?.t || "").toLowerCase();
-      return rid.includes(qq) || n.includes(qq) || t.includes(qq);
+      const c = normalizeCategoryLookupKey(r?.data?.c || "");
+      const byCategory = qqCategory ? c.includes(qqCategory) : false;
+      return rid.includes(qq) || n.includes(qq) || t.includes(qq) || byCategory;
     })
-    .slice(0, 30);
+    .slice(0, 30)
+    .map((r: RobotRow) => ({
+      ...r,
+      data: {
+        ...r.data,
+        c: normalizeRobotCategory(r.data?.c || ""),
+      },
+    }));
 }

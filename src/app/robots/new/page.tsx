@@ -11,6 +11,10 @@ import { useDropzone } from "react-dropzone";
 import { useRobotStore } from "@/store/useRobotStore";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { buildCanonicalRobotQrLink } from "@/lib/qrLinks";
+import {
+  normalizeRobotCategory,
+  ROBOT_CATEGORY_OPTIONS,
+} from "@/lib/categoryNormalization";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { fetchTeams } from "@/features/teams/api/teams";
 
@@ -88,6 +92,7 @@ export default function NewRobotPage() {
         const robotId = String(ridData).padStart(4, "0");
         const qrLink = buildCanonicalRobotQrLink(robotId);
         const teamId = selectedTeamId || null;
+        const normalizedCategory = normalizeRobotCategory(value.categoria);
 
         const { error } = await getSupabaseClient().from("robot_cards").insert([
           {
@@ -98,7 +103,7 @@ export default function NewRobotPage() {
             data: {
               i: robotId,
               n: value.nombre,
-              c: value.categoria,
+              c: normalizedCategory,
               t: value.equipo,
               p: value.controlador,
               s: value.escuela,
@@ -203,12 +208,11 @@ export default function NewRobotPage() {
                     className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none"
                   >
                     <option value="">(selecciona)</option>
-                    <option value="Mini Sumo">Mini Sumo</option>
-                    <option value="Mini Sumo 500g">Mini Sumo 500g</option>
-                    <option value="Sumo 3kg">Sumo 3kg</option>
-                    <option value="Combate">Combate</option>
-                    <option value="Seguidor de línea">Seguidor de línea</option>
-                    <option value="Otro">Otro</option>
+                    {ROBOT_CATEGORY_OPTIONS.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
                   </select>
                   {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{formatFieldErrors(field.state.meta.errors)}</p> : null}
                 </div>

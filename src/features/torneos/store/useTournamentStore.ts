@@ -22,6 +22,7 @@ import {
   clearLosersMatch,
 } from "../lib/bracketUtils";
 import { LOCAL_KEY } from "../lib/types";
+import { ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO } from "@/lib/categoryNormalization";
 
 interface TournamentStore {
   tournament: Tournament;
@@ -56,7 +57,7 @@ interface TournamentStore {
 
 const defaultTournament: Tournament = {
   name: "",
-  category: "Mini Sumo Autónomo Profesional",
+  category: ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO,
   venue: "",
   date: "",
   format: "single",

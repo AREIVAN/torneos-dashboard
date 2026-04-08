@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { categoriesMatch, normalizeRobotCategory } from '@/lib/categoryNormalization';
 import type {
   DbTournament,
   DbTournamentInsert,
@@ -20,9 +21,14 @@ import type {
 export async function createTournament(
   data: DbTournamentInsert
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
+  const normalizedData: DbTournamentInsert = {
+    ...data,
+    category: normalizeRobotCategory(data.category),
+  };
+
   const { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
-    .insert(data)
+    .insert(normalizedData)
     .select()
     .single();
 
@@ -146,16 +152,12 @@ export async function getTournaments(options?: {
     }
   }
 
-  // Filter by category
-  if (options?.category) {
-    query = query.eq('category', options.category);
-  }
-
   // Pagination
-  if (options?.limit) {
+  const shouldPaginateInDb = !options?.category;
+  if (shouldPaginateInDb && options?.limit) {
     query = query.limit(options.limit);
   }
-  if (options?.offset) {
+  if (shouldPaginateInDb && options?.offset) {
     query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
   }
 
@@ -166,7 +168,21 @@ export async function getTournaments(options?: {
     return { data: [], error: new Error(error.message), count: 0 };
   }
 
-  return { data: data || [], error: null, count: count || 0 };
+  let rows = data || [];
+  if (options?.category) {
+    rows = rows.filter((tournament: DbTournament) =>
+      categoriesMatch(tournament.category, options.category)
+    );
+    const offset = options.offset || 0;
+    const end = options.limit ? offset + options.limit : undefined;
+    return {
+      data: rows.slice(offset, end),
+      error: null,
+      count: rows.length,
+    };
+  }
+
+  return { data: rows, error: null, count: count || 0 };
 }
 
 // =============================================
@@ -177,9 +193,17 @@ export async function updateTournament(
   id: string,
   data: DbTournamentUpdate
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
+  const normalizedData: DbTournamentUpdate = {
+    ...data,
+    category:
+      typeof data.category === 'string'
+        ? normalizeRobotCategory(data.category)
+        : data.category,
+  };
+
   const { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
-    .update(data)
+    .update(normalizedData)
     .eq('id', id)
     .select()
     .single();
@@ -244,7 +268,7 @@ export async function duplicateTournament(
   // Create new tournament with same settings but reset state
   const newTournament: DbTournamentInsert = {
     name: newName || `${original.name} (copy)`,
-    category: original.category,
+    category: normalizeRobotCategory(original.category),
     venue: original.venue,
     date: original.date,
     format: original.format,

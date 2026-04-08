@@ -1,3 +1,5 @@
+import { normalizeRobotCategory } from '@/lib/categoryNormalization';
+
 export interface RobotData {
   n?: string;
   c?: string;
@@ -75,9 +77,7 @@ export function extractRobotFields(robot: RobotRecord): NormalizedRobot {
     '';
 
   const categoria =
-    robot.categoria ||
-    data.c ||
-    '';
+    normalizeRobotCategory(robot.categoria || data.c || '');
 
   const equipo =
     robot.equipo ||
@@ -146,6 +146,11 @@ export function extractRobotFields(robot: RobotRecord): NormalizedRobot {
     robot.team_id ||
     null;
 
+  const normalizedData: RobotData = {
+    ...data,
+    c: categoria || data.c,
+  };
+
   return {
     robot_id: robot.robot_id || '',
     nombre,
@@ -164,6 +169,6 @@ export function extractRobotFields(robot: RobotRecord): NormalizedRobot {
     qr_link,
     created_at,
     team_id,
-    rawData: data,
+    rawData: normalizedData,
   };
 }
