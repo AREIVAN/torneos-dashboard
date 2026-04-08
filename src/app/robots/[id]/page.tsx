@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { extractRobotFields } from "@/lib/robotHelpers";
+import { buildCanonicalRobotQrLink } from "@/lib/qrLinks";
 import { SkeletonRobotProfile } from "@/components/ui/skeleton";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import QRCode from "qrcode";
@@ -69,7 +70,7 @@ export default function RobotViewerPage() {
   const qrValue =
     robotData?.qr_link ||
     (robotData?.robot_id
-      ? `${typeof window !== "undefined" ? window.location.origin : ""}/robots/${robotData.robot_id}`
+      ? buildCanonicalRobotQrLink(robotData.robot_id)
       : "");
 
   useEffect(() => {

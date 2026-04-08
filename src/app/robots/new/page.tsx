@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { useRobotStore } from "@/store/useRobotStore";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { buildCanonicalRobotQrLink } from "@/lib/qrLinks";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { fetchTeams } from "@/features/teams/api/teams";
 
@@ -85,7 +86,7 @@ export default function NewRobotPage() {
         if (ridError || !ridData) throw new Error("No se pudo obtener el ID del robot");
         
         const robotId = String(ridData).padStart(4, "0");
-        const qrLink = `${window.location.origin}/robots/${robotId}`;
+        const qrLink = buildCanonicalRobotQrLink(robotId);
         const teamId = selectedTeamId || null;
 
         const { error } = await getSupabaseClient().from("robot_cards").insert([
