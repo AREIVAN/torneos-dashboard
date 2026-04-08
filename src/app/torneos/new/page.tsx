@@ -6,7 +6,7 @@ import { useDbTournamentStore } from "@/features/torneos/store/useDbTournamentSt
 import TournamentPanel from "@/features/torneos/components/TournamentPanel";
 import DbBracketView from "@/features/torneos/components/DbBracketView";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function NewTournamentPage() {
   const router = useRouter();
@@ -21,6 +21,8 @@ export default function NewTournamentPage() {
     createAndSave,
     generate,
   } = useDbTournamentStore();
+  const [setupPanelOverride, setSetupPanelOverride] = useState<boolean | null>(null);
+  const showSetupPanel = setupPanelOverride ?? !view;
 
   // Start fresh when loading this page
   useEffect(() => {
@@ -110,6 +112,17 @@ export default function NewTournamentPage() {
             )}
           </button>
           <button
+            onClick={() =>
+              setSetupPanelOverride((current) => {
+                const currentVisible = current ?? !view;
+                return !currentVisible;
+              })
+            }
+            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+          >
+            {showSetupPanel ? "Ocultar configuracion" : "Mostrar configuracion"}
+          </button>
+          <button
             onClick={handleReset}
             className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
           >
@@ -118,8 +131,12 @@ export default function NewTournamentPage() {
         </div>
       </div>
 
-      <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
-        <TournamentPanel useDatabase />
+      <div
+        className={`p-4 grid grid-cols-1 gap-4 ${
+          showSetupPanel ? "lg:grid-cols-[1fr_1.2fr]" : "lg:grid-cols-1"
+        }`}
+      >
+        {showSetupPanel && <TournamentPanel useDatabase />}
         <DbBracketView />
       </div>
     </section>

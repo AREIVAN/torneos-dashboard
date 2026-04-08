@@ -52,9 +52,16 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
     };
   }, [view]);
 
-  const renderBracket = (bracket: Bracket) => {
+  const renderBracket = (bracket: Bracket, exportName: string) => {
     if (style === "map") {
-      return <BracketVisualizer bracket={bracket} viewMode="competitor" />;
+      return (
+        <BracketVisualizer
+          bracket={bracket}
+          viewMode="competitor"
+          exportable
+          exportFileName={exportName}
+        />
+      );
     }
     return <BracketColumns bracket={bracket} />;
   };
@@ -72,7 +79,7 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
       </div>
 
       <div className="p-3 space-y-4">
-        {view.type === "single" && view.bracket && renderBracket(view.bracket)}
+        {view.type === "single" && view.bracket && renderBracket(view.bracket, "bracket-single")}
 
         {view.type === "groups" && (
           <>
@@ -96,7 +103,7 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
             {view.finalBracket && (
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-wide text-brand-muted">Fase final</div>
-                {renderBracket(view.finalBracket)}
+                {renderBracket(view.finalBracket, "bracket-fase-final")}
               </div>
             )}
           </>
@@ -106,16 +113,16 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-brand-muted">Winners bracket</div>
-              {renderBracket(view.dbl.winners)}
+              {renderBracket(view.dbl.winners, "bracket-winners")}
             </div>
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-wide text-brand-muted">Losers bracket</div>
-              {renderBracket(view.dbl.losers)}
+              {renderBracket(view.dbl.losers, "bracket-losers")}
             </div>
             {grandFinalBracket && (
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-wide text-brand-muted">Grand final</div>
-                {renderBracket(grandFinalBracket)}
+                {renderBracket(grandFinalBracket, "bracket-grand-final")}
               </div>
             )}
           </div>

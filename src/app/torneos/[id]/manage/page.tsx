@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -15,11 +15,14 @@ export default function TournamentManagePage() {
 
   const {
     tournament,
+    view,
     isSyncing,
     syncError,
     loadTournament,
     saveTournament,
   } = useDbTournamentStore();
+  const [setupPanelOverride, setSetupPanelOverride] = useState<boolean | null>(null);
+  const showSetupPanel = setupPanelOverride ?? !view;
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -60,6 +63,18 @@ export default function TournamentManagePage() {
           </Link>
 
           <button
+            onClick={() =>
+              setSetupPanelOverride((current) => {
+                const currentVisible = current ?? !view;
+                return !currentVisible;
+              })
+            }
+            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 transition-all"
+          >
+            {showSetupPanel ? "Ocultar configuracion" : "Mostrar configuracion"}
+          </button>
+
+          <button
             onClick={() => void handleSave()}
             disabled={isSyncing}
             className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 transition-all disabled:opacity-60"
@@ -73,8 +88,12 @@ export default function TournamentManagePage() {
         <div className="px-4 pt-3 text-sm text-brand-hot">{syncError}</div>
       )}
 
-      <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
-        <TournamentPanel useDatabase />
+      <div
+        className={`p-4 grid grid-cols-1 gap-4 ${
+          showSetupPanel ? "lg:grid-cols-[1fr_1.2fr]" : "lg:grid-cols-1"
+        }`}
+      >
+        {showSetupPanel && <TournamentPanel useDatabase />}
         <DbBracketView />
       </div>
     </section>

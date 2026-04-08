@@ -11,7 +11,6 @@ const MEDALS: Record<number, string> = {
   1: "🥇",
   2: "🥈",
   3: "🥉",
-  4: "4o",
 };
 
 export function FinalPlacementsPodium({ placements, participants }: FinalPlacementsPodiumProps) {
@@ -19,7 +18,7 @@ export function FinalPlacementsPodium({ placements, participants }: FinalPlaceme
   const sorted = [...placements]
     .filter((p) => p.final_position !== null)
     .sort((a, b) => (a.final_position as number) - (b.final_position as number))
-    .slice(0, 4);
+    .slice(0, 3);
 
   if (sorted.length === 0) {
     return null;
@@ -27,8 +26,8 @@ export function FinalPlacementsPodium({ placements, participants }: FinalPlaceme
 
   return (
     <div className="rounded-xl border border-brand-stroke/25 bg-brand-panel/40 p-4">
-      <h3 className="text-sm uppercase tracking-wide text-brand-muted mb-3">Posiciones Finales</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <h3 className="text-sm uppercase tracking-wide text-brand-muted mb-3">Top 3 Final</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {sorted.map((place) => {
           const participant = byRobotId.get(place.robot_id);
           const name = participant?.robot_data?.n ?? place.robot_id;

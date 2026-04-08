@@ -1,9 +1,105 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDbTournamentStore } from "../store/useDbTournamentStore";
-import type { Bracket, DoubleStructure, Match } from "../lib/types";
+import type { Bracket, DoubleStructure, Match, Player, ViewState } from "../lib/types";
 import { isBye } from "../lib/bracketUtils";
 import BracketVisualizer from "./BracketVisualizer";
+
+interface RankedPlayer {
+  id: string;
+  losses: number;
+}
+
+function getPlayerIdFromMatchSide(match: Match, side: "a" | "b") {
+  const slot = side === "a" ? match.a : match.b;
+  if (!slot || !slot.id || slot.bye || slot.id === "BYE") return null;
+  return slot.id;
+}
+
+function getLoserId(match: Match) {
+  if (!match.winner) return null;
+  return getPlayerIdFromMatchSide(match, match.winner === "a" ? "b" : "a");
+}
+
+function collectMatches(view: ViewState | null): Match[] {
+  if (!view) return [];
+  if (view.type === "single") return view.bracket?.rounds.flat() || [];
+  if (view.type === "groups") return view.finalBracket?.rounds.flat() || [];
+  if (view.type === "double" && view.dbl) {
+    return [
+      ...view.dbl.winners.rounds.flat(),
+      ...view.dbl.losers.rounds.flat(),
+      ...view.dbl.grandFinal,
+    ];
+  }
+  return [];
+}
+
+function computePlayerLists(players: Player[], view: ViewState | null) {
+  const lossesByPlayer = new Map<string, number>();
+  const allMatches = collectMatches(view);
+
+  allMatches.forEach((match) => {
+    const loserId = getLoserId(match);
+    if (!loserId) return;
+    lossesByPlayer.set(loserId, (lossesByPlayer.get(loserId) || 0) + 1);
+  });
+
+  const maxLosses = view?.type === "double" ? 2 : 1;
+
+  const qualifiers =
+    view?.type === "groups" && view.qualifiers?.length
+      ? new Set(view.qualifiers.map((p) => p.i))
+      : null;
+
+  const ranked: RankedPlayer[] = players.map((player) => {
+    const losses = lossesByPlayer.get(player.i) || 0;
+    if (qualifiers && !qualifiers.has(player.i)) {
+      return { id: player.i, losses: Math.max(losses, maxLosses) };
+    }
+    return { id: player.i, losses };
+  });
+
+  const inPlayIds = new Set(ranked.filter((row) => row.losses < maxLosses).map((row) => row.id));
+  const inPlay = players.filter((player) => inPlayIds.has(player.i));
+  const eliminated = players
+    .filter((player) => !inPlayIds.has(player.i))
+    .sort((a, b) => (lossesByPlayer.get(b.i) || 0) - (lossesByPlayer.get(a.i) || 0));
+
+  return { inPlay, eliminated };
+}
+
+function computeTopThree(view: ViewState | null): string[] {
+  if (!view) return [];
+
+  if (view.type === "double" && view.dbl) {
+    const { dbl } = view;
+    if (!dbl.tournamentResolved || !dbl.champion) return [];
+    const mainGrandFinal = dbl.gfReset && dbl.grandFinal.length > 1 ? dbl.grandFinal[1] : dbl.grandFinal[0];
+    if (!mainGrandFinal?.winner) return [dbl.champion];
+    const second = getPlayerIdFromMatchSide(mainGrandFinal, mainGrandFinal.winner === "a" ? "b" : "a");
+    const losersFinalRound = dbl.losers.rounds[dbl.losers.rounds.length - 1] || [];
+    const losersFinalMatch = losersFinalRound[losersFinalRound.length - 1];
+    const third = losersFinalMatch ? getLoserId(losersFinalMatch) : null;
+    return [dbl.champion, second, third].filter((id, idx, arr): id is string => Boolean(id) && arr.indexOf(id) === idx);
+  }
+
+  const bracket = view.type === "single" ? view.bracket : view.finalBracket;
+  if (!bracket) return [];
+  const finalRound = bracket.rounds[bracket.rounds.length - 1] || [];
+  const finalMatch = finalRound[0];
+  if (!finalMatch?.winner) return [];
+
+  const first = getPlayerIdFromMatchSide(finalMatch, finalMatch.winner);
+  const second = getPlayerIdFromMatchSide(finalMatch, finalMatch.winner === "a" ? "b" : "a");
+
+  const semifinalRound = bracket.rounds[bracket.rounds.length - 2] || [];
+  const semifinalLosers = semifinalRound.map(getLoserId).filter((id): id is string => Boolean(id));
+  const third = semifinalLosers.find((id) => id !== second) || semifinalLosers[0] || null;
+
+  return [first, second, third].filter((id, idx, arr): id is string => Boolean(id) && arr.indexOf(id) === idx);
+}
 
 function MatchCard({
   m,
@@ -142,6 +238,8 @@ function BracketColumns({
         bracket={bracket}
         bracketId={bracketId}
         viewMode={viewMode}
+        exportable={viewMode === "competitor"}
+        exportFileName={bracketId ? `bracket-${bracketId}` : "bracket-main"}
         onWin={(ri, mi, side) => {
           const { toggleMatchWin } = useDbTournamentStore.getState();
           toggleMatchWin(bracketId || "main", ri, mi, side);
@@ -300,35 +398,15 @@ function LosersBracketView({
   );
 }
 
-function ChampionBanner({ championId }: { championId: string }) {
-  const players = useDbTournamentStore((s) => s.players);
-  const champion = players.find((p) => p.i === championId);
-
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-gradient-to-br from-brand-panel to-brand-panel2 border-2 border-brand-neon/50 rounded-3xl p-8 text-center shadow-[0_0_60px_rgba(47,230,255,0.3)] max-w-md mx-4">
-        <div className="text-6xl mb-4">🏆</div>
-        <div className="text-xs uppercase tracking-widest text-brand-neon mb-2">CAMPEON</div>
-        <div className="text-2xl font-black text-brand-text mb-1">{champion?.n || championId}</div>
-        {champion?.t && <div className="text-sm text-brand-muted mb-4">{champion.t}</div>}
-        <div className="text-xs text-brand-muted/60 mt-4">Double Elimination Champion</div>
-      </div>
-    </div>
-  );
-}
-
 function DoubleView() {
   const { view, viewMode, viewStyle } = useDbTournamentStore();
 
   if (!view || view.type !== "double" || !view.dbl) return null;
 
   const { dbl } = view;
-  const isResolved = dbl.tournamentResolved;
 
   return (
-    <div className="relative">
-      {isResolved && dbl.champion && <ChampionBanner championId={dbl.champion} />}
-
+    <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
         <div className="flex flex-col gap-4">
           <div>
@@ -366,6 +444,7 @@ function DoubleView() {
 export default function DbBracketView() {
   const {
     tournament,
+    players,
     view,
     viewStyle,
     generate,
@@ -384,6 +463,11 @@ export default function DbBracketView() {
         ? "Double (W/L)"
         : "Single Bracket";
 
+  const { inPlay, eliminated } = useMemo(() => computePlayerLists(players, view), [players, view]);
+  const topThree = useMemo(() => computeTopThree(view), [view]);
+  const playerById = useMemo(() => new Map(players.map((player) => [player.i, player])), [players]);
+  const showGenerationActions = !view;
+
   return (
     <div className="rounded-[18px] border border-brand-stroke/20 bg-brand-bg/35 overflow-hidden flex flex-col">
       <div className="px-4 py-3 border-b border-brand-stroke/20 flex flex-wrap items-center justify-between gap-3 bg-brand-panel/40">
@@ -392,24 +476,28 @@ export default function DbBracketView() {
           <b className="text-lg text-brand-text">{viewTitle}</b>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => void generate()}
-            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
-          >
-            Generar
-          </button>
-          <button
-            onClick={shufflePlayers}
-            className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
-          >
-            Mezclar seeds
-          </button>
-          <button
-            onClick={clearView}
-            className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
-          >
-            Limpiar
-          </button>
+          {showGenerationActions && (
+            <>
+              <button
+                onClick={() => void generate()}
+                className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+              >
+                Generar
+              </button>
+              <button
+                onClick={shufflePlayers}
+                className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+              >
+                Mezclar seeds
+              </button>
+              <button
+                onClick={clearView}
+                className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+              >
+                Limpiar
+              </button>
+            </>
+          )}
           <button
             onClick={() => setViewStyle(viewStyle === "columns" ? "map" : "columns")}
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
@@ -459,18 +547,88 @@ export default function DbBracketView() {
               Anade al menos 2 competidores y haz clic en &quot;Generar&quot; para construir el arbol del torneo.
             </p>
           </div>
-        ) : view.type === "single" && view.bracket ? (
-          <BracketColumns
-            bracket={view.bracket}
-            bracketId="main"
-            viewMode={viewMode}
-            viewStyle={viewStyle}
-          />
-        ) : view.type === "groups" ? (
-          <GroupsView />
-        ) : view.type === "double" ? (
-          <DoubleView />
-        ) : null}
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start">
+            <div>
+              {view.type === "single" && view.bracket ? (
+                <BracketColumns
+                  bracket={view.bracket}
+                  bracketId="main"
+                  viewMode={viewMode}
+                  viewStyle={viewStyle}
+                />
+              ) : view.type === "groups" ? (
+                <GroupsView />
+              ) : view.type === "double" ? (
+                <DoubleView />
+              ) : null}
+            </div>
+
+            <aside className="rounded-xl border border-brand-stroke/20 bg-brand-panel/30 p-3 space-y-4">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-brand-neon/80 mb-2">Competidores en juego</div>
+                <div className="space-y-1 max-h-[220px] overflow-auto custom-scroll pr-1">
+                  {inPlay.length === 0 ? (
+                    <div className="text-xs text-brand-muted">Sin competidores activos.</div>
+                  ) : (
+                    inPlay.map((player) => (
+                      <div
+                        key={player.i}
+                        className="rounded-lg border border-brand-neon/20 bg-brand-neon/10 px-2.5 py-1.5"
+                      >
+                        <div className="text-sm font-bold text-brand-text truncate">{player.n || player.i}</div>
+                        <div className="text-xs text-brand-muted truncate">{player.t || "Sin equipo"}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wide text-brand-hot/80 mb-2">Eliminados</div>
+                <div className="space-y-1 max-h-[220px] overflow-auto custom-scroll pr-1">
+                  {eliminated.length === 0 ? (
+                    <div className="text-xs text-brand-muted">Nadie eliminado todavia.</div>
+                  ) : (
+                    eliminated.map((player) => (
+                      <div
+                        key={player.i}
+                        className="rounded-lg border border-brand-hot/20 bg-brand-hot/10 px-2.5 py-1.5"
+                      >
+                        <div className="text-sm font-bold text-brand-text truncate">{player.n || player.i}</div>
+                        <div className="text-xs text-brand-muted truncate">{player.t || "Sin equipo"}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {topThree.length > 0 && (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Top 3</div>
+                  <div className="space-y-1.5">
+                    {topThree.map((playerId, index) => {
+                      const player = playerById.get(playerId);
+                      const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+                      return (
+                        <div
+                          key={`${playerId}-${index}`}
+                          className="rounded-lg border border-brand-stroke/20 bg-brand-bg/25 px-2.5 py-1.5"
+                        >
+                          <div className="text-xs text-brand-muted">{badge} Puesto {index + 1}</div>
+                          <div className="text-sm font-bold text-brand-text truncate">
+                            {player?.n || playerId}
+                          </div>
+                          <div className="text-xs text-brand-muted truncate">{player?.t || "Sin equipo"}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+        )}
       </div>
     </div>
   );

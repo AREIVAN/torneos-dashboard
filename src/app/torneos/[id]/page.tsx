@@ -55,7 +55,13 @@ export default function TournamentDetailPage() {
   }, [tournamentId]);
 
   useEffect(() => {
-    void loadTournament();
+    const timer = window.setTimeout(() => {
+      void loadTournament();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadTournament]);
 
   useEffect(() => {
@@ -122,6 +128,62 @@ export default function TournamentDetailPage() {
     () => data?.matches.filter((m) => m.winner_id || m.is_bye).length ?? 0,
     [data]
   );
+
+  const topThree = useMemo(() => {
+    if (!data) return [];
+
+    const withFinalPosition = data.standings
+      .filter((standing) => standing.final_position !== null)
+      .sort((a, b) => (a.final_position as number) - (b.final_position as number));
+
+    const source =
+      withFinalPosition.length >= 3
+        ? withFinalPosition
+        : [...data.standings].sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            return b.rounds_won - a.rounds_won;
+          });
+
+    return source.slice(0, 3).map((standing, index) => {
+      const participant = data.participants.find((entry) => entry.robot_id === standing.robot_id);
+      return {
+        position: standing.final_position ?? index + 1,
+        robotId: standing.robot_id,
+        name: participant?.robot_data?.n || standing.robot_id,
+        team: participant?.robot_data?.t || "Sin equipo",
+      };
+    });
+  }, [data]);
+
+  const inPlayVsEliminated = useMemo(() => {
+    if (!data || data.status !== "active") {
+      return { active: [], eliminated: [] as Array<{ robotId: string; name: string; team: string }> };
+    }
+
+    const maxLosses = data.format === "double" ? 2 : 1;
+    const standingsMap = new Map(data.standings.map((standing) => [standing.robot_id, standing]));
+    const active: Array<{ robotId: string; name: string; team: string }> = [];
+    const eliminated: Array<{ robotId: string; name: string; team: string }> = [];
+
+    data.participants.forEach((participant) => {
+      const standing = standingsMap.get(participant.robot_id);
+      const losses = standing?.losses ?? 0;
+      const row = {
+        robotId: participant.robot_id,
+        name: participant.robot_data?.n || participant.robot_id,
+        team: participant.robot_data?.t || "Sin equipo",
+      };
+
+      if (losses >= maxLosses) {
+        eliminated.push(row);
+      } else {
+        active.push(row);
+      }
+    });
+
+    return { active, eliminated };
+  }, [data]);
 
   const setCompleted = async () => {
     if (!data) return;
@@ -253,14 +315,76 @@ export default function TournamentDetailPage() {
               </div>
             </div>
 
+            {data.status === "completed" && topThree.length > 0 && (
+              <div className="rounded-xl border border-brand-stroke/25 bg-brand-panel/40 p-4">
+                <h3 className="text-sm uppercase tracking-wide text-brand-muted mb-3">Top 3 del torneo</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {topThree.map((entry) => (
+                    <div key={entry.robotId} className="rounded-lg border border-brand-stroke/20 bg-brand-bg/25 p-3">
+                      <div className="text-xs text-brand-muted mb-1">#{entry.position}</div>
+                      <div className="text-sm font-bold text-brand-text truncate">{entry.name}</div>
+                      <div className="text-xs text-brand-muted truncate">{entry.team}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <FinalPlacementsPodium placements={data.standings} participants={data.participants} />
             <GroupStandingsTable standings={data.standings} participants={data.participants} />
 
             {data.bracket_data ? (
-              <SpectatorBracketView view={data.bracket_data} />
+              <div
+                className={`grid grid-cols-1 gap-4 items-start ${
+                  data.status === "active" ? "lg:grid-cols-[1fr_300px]" : "lg:grid-cols-1"
+                }`}
+              >
+                <SpectatorBracketView view={data.bracket_data} />
+                {data.status === "active" && (
+                  <aside className="rounded-xl border border-brand-stroke/25 bg-brand-panel/40 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-brand-stroke/20 text-xs uppercase tracking-wide text-brand-muted">
+                      Competidores en juego
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {inPlayVsEliminated.active.length === 0 ? (
+                        <div className="text-xs text-brand-muted">Sin activos por el momento.</div>
+                      ) : (
+                        inPlayVsEliminated.active.map((entry) => (
+                          <div
+                            key={`active-${entry.robotId}`}
+                            className="rounded-lg border border-brand-neon/30 bg-brand-neon/10 px-2.5 py-2"
+                          >
+                            <div className="text-sm font-bold text-brand-text truncate">{entry.name}</div>
+                            <div className="text-xs text-brand-muted truncate">{entry.team}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="px-3 py-2 border-y border-brand-stroke/20 text-xs uppercase tracking-wide text-brand-muted">
+                      Eliminados
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {inPlayVsEliminated.eliminated.length === 0 ? (
+                        <div className="text-xs text-brand-muted">Aun no hay eliminados.</div>
+                      ) : (
+                        inPlayVsEliminated.eliminated.map((entry) => (
+                          <div
+                            key={`eliminated-${entry.robotId}`}
+                            className="rounded-lg border border-brand-hot/20 bg-brand-hot/10 px-2.5 py-2"
+                          >
+                            <div className="text-sm font-bold text-brand-text truncate">{entry.name}</div>
+                            <div className="text-xs text-brand-muted truncate">{entry.team}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </aside>
+                )}
+              </div>
             ) : (
               <div className="rounded-xl border border-brand-stroke/25 bg-brand-panel/40 p-3 text-sm text-brand-muted">
-                Aun no hay visualizacion de llaves. Genera o guarda el bracket desde "Gestionar llaves".
+                Aun no hay visualizacion de llaves. Genera o guarda el bracket desde &quot;Gestionar llaves&quot;.
               </div>
             )}
 
@@ -269,7 +393,7 @@ export default function TournamentDetailPage() {
                 Historial de matches
               </div>
               <div className="px-3 py-2 text-xs text-brand-muted border-b border-brand-stroke/10">
-                Vista de solo lectura. Para editar llaves y resultados usa "Gestionar llaves".
+                Vista de solo lectura. Para editar llaves y resultados usa &quot;Gestionar llaves&quot;.
               </div>
               {data.matches.length === 0 ? (
                 <div className="p-3 text-sm text-brand-muted">Aun no hay matches guardados.</div>

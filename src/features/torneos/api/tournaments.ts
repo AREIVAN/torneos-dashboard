@@ -14,6 +14,21 @@ import type {
   TournamentStatus,
 } from '@/lib/supabase/database.types';
 
+function isMissingTournamentColumnError(error: { message: string } | null, column: string) {
+  if (!error) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes(column.toLowerCase()) &&
+    (message.includes("schema cache") || message.includes("could not find"))
+  );
+}
+
+function withoutField<T extends Record<string, unknown>, K extends keyof T>(obj: T, field: K): Omit<T, K> {
+  const copy = { ...obj };
+  delete copy[field];
+  return copy;
+}
+
 // =============================================
 // CREATE
 // =============================================
@@ -21,16 +36,24 @@ import type {
 export async function createTournament(
   data: DbTournamentInsert
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const normalizedData: DbTournamentInsert = {
+  const normalizedData = {
     ...data,
     category: normalizeRobotCategory(data.category),
   };
 
-  const { data: tournament, error } = await getSupabaseClient()
+  let { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
     .insert(normalizedData)
     .select()
     .single();
+
+  if (isMissingTournamentColumnError(error, 'advance_per_group')) {
+    ({ data: tournament, error } = await getSupabaseClient()
+      .from('tournaments')
+      .insert(withoutField(normalizedData, 'advance_per_group'))
+      .select()
+      .single());
+  }
 
   if (error) {
     console.error('Error creating tournament:', error);
@@ -193,7 +216,7 @@ export async function updateTournament(
   id: string,
   data: DbTournamentUpdate
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const normalizedData: DbTournamentUpdate = {
+  const normalizedData = {
     ...data,
     category:
       typeof data.category === 'string'
@@ -201,12 +224,21 @@ export async function updateTournament(
         : data.category,
   };
 
-  const { data: tournament, error } = await getSupabaseClient()
+  let { data: tournament, error } = await getSupabaseClient()
     .from('tournaments')
     .update(normalizedData)
     .eq('id', id)
     .select()
     .single();
+
+  if (isMissingTournamentColumnError(error, 'advance_per_group')) {
+    ({ data: tournament, error } = await getSupabaseClient()
+      .from('tournaments')
+      .update(withoutField(normalizedData, 'advance_per_group'))
+      .eq('id', id)
+      .select()
+      .single());
+  }
 
   if (error) {
     console.error('Error updating tournament:', error);
