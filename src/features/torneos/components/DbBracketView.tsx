@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDbTournamentStore } from "../store/useDbTournamentStore";
 import type { Bracket, DoubleStructure, Match, Player, ViewState } from "../lib/types";
 import { isBye } from "../lib/bracketUtils";
@@ -462,6 +462,7 @@ export default function DbBracketView() {
     viewMode,
     organizerUnlocked,
     unlockOrganizerMode,
+    refreshOrganizerSession,
     setViewMode,
     setViewStyle,
     syncError,
@@ -482,6 +483,10 @@ export default function DbBracketView() {
   const [tokenValue, setTokenValue] = useState("");
   const [tokenError, setTokenError] = useState<string | null>(null);
 
+  useEffect(() => {
+    void refreshOrganizerSession();
+  }, [refreshOrganizerSession]);
+
   const handleToggleViewMode = () => {
     if (viewMode === "organizer") {
       setViewMode("competitor");
@@ -498,8 +503,8 @@ export default function DbBracketView() {
     setShowTokenInput(true);
   };
 
-  const handleUnlockOrganizerMode = () => {
-    if (unlockOrganizerMode(tokenValue)) {
+  const handleUnlockOrganizerMode = async () => {
+    if (await unlockOrganizerMode(tokenValue)) {
       setTokenError(null);
       setTokenValue("");
       setShowTokenInput(false);
@@ -576,14 +581,14 @@ export default function DbBracketView() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    handleUnlockOrganizerMode();
+                    void handleUnlockOrganizerMode();
                   }
                 }}
                 placeholder="Ingresa token"
                 className="flex-1 border border-brand-stroke/25 bg-brand-bg/30 text-brand-text px-2.5 py-2 rounded-lg text-sm"
               />
               <button
-                onClick={handleUnlockOrganizerMode}
+                onClick={() => void handleUnlockOrganizerMode()}
                 className="border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-3 py-2 rounded-lg text-xs font-bold"
               >
                 Habilitar modo organizador

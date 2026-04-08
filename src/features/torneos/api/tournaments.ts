@@ -5,6 +5,7 @@
 
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { categoriesMatch, normalizeRobotCategory } from '@/lib/categoryNormalization';
+import { SecureMutationError, secureMutation } from './secureMutation';
 import type {
   DbTournament,
   DbTournamentInsert,
@@ -23,10 +24,84 @@ function isMissingTournamentColumnError(error: { message: string } | null, colum
   );
 }
 
-function withoutField<T extends Record<string, unknown>, K extends keyof T>(obj: T, field: K): Omit<T, K> {
-  const copy = { ...obj };
+interface TournamentMutationError {
+  message: string;
+  code?: string | null;
+  details?: string | null;
+  hint?: string | null;
+}
+
+function withoutField<T extends object, K extends keyof T>(obj: T, field: K): Omit<T, K> {
+  const copy = { ...obj } as T & Partial<Record<K, unknown>>;
   delete copy[field];
-  return copy;
+  return copy as Omit<T, K>;
+}
+
+const TOURNAMENT_SCHEMA_FALLBACK_COLUMNS = ['advance_per_group', 'date'] as const;
+
+type TournamentMutationOperation = 'insert' | 'update';
+
+async function mutateTournamentWithSchemaFallback(
+  operation: TournamentMutationOperation,
+  data: DbTournamentInsert | DbTournamentUpdate,
+  id?: string
+): Promise<{ data: DbTournament | null; error: TournamentMutationError | null }> {
+  let mutationData = data;
+  let tournament: DbTournament | null = null;
+  let error: TournamentMutationError | null = null;
+  const omittedColumns: string[] = [];
+
+  while (true) {
+    const match = operation === 'update' && id ? { id } : undefined;
+
+    try {
+      tournament = await secureMutation<DbTournament>({
+        table: 'tournaments',
+        operation,
+        data: mutationData,
+        match,
+        single: true,
+      });
+      error = null;
+      break;
+    } catch (err) {
+      if (err instanceof SecureMutationError) {
+        error = {
+          message: err.message,
+          code: err.code,
+          details: err.details,
+          hint: err.hint,
+        };
+      } else {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        error = { message };
+      }
+    }
+
+    const missingColumn = TOURNAMENT_SCHEMA_FALLBACK_COLUMNS.find(
+      (column) =>
+        isMissingTournamentColumnError(error, column) &&
+        Object.prototype.hasOwnProperty.call(mutationData, column)
+    );
+
+    if (!missingColumn) {
+      break;
+    }
+
+    omittedColumns.push(missingColumn);
+    console.warn(
+      `Tournaments ${operation} fallback: retrying without '${missingColumn}' due to schema cache drift.`
+    );
+    mutationData = withoutField(mutationData, missingColumn as keyof typeof mutationData);
+  }
+
+  if (error && omittedColumns.length > 0) {
+    error = {
+      message: `${error.message} (retry attempted without: ${omittedColumns.join(', ')})`,
+    };
+  }
+
+  return { data: tournament, error };
 }
 
 // =============================================
@@ -36,27 +111,23 @@ function withoutField<T extends Record<string, unknown>, K extends keyof T>(obj:
 export async function createTournament(
   data: DbTournamentInsert
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const normalizedData = {
+  const normalizedData: DbTournamentInsert = {
     ...data,
     category: normalizeRobotCategory(data.category),
   };
 
-  let { data: tournament, error } = await getSupabaseClient()
-    .from('tournaments')
-    .insert(normalizedData)
-    .select()
-    .single();
-
-  if (isMissingTournamentColumnError(error, 'advance_per_group')) {
-    ({ data: tournament, error } = await getSupabaseClient()
-      .from('tournaments')
-      .insert(withoutField(normalizedData, 'advance_per_group'))
-      .select()
-      .single());
-  }
+  const { data: tournament, error } = await mutateTournamentWithSchemaFallback(
+    'insert',
+    normalizedData
+  );
 
   if (error) {
-    console.error('Error creating tournament:', error);
+    console.error('Error creating tournament:', {
+      code: error.code ?? null,
+      message: error.message,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
     return { data: null, error: new Error(error.message) };
   }
 
@@ -216,32 +287,26 @@ export async function updateTournament(
   id: string,
   data: DbTournamentUpdate
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const normalizedData = {
+  const normalizedData: DbTournamentUpdate = {
     ...data,
     category:
       typeof data.category === 'string'
         ? normalizeRobotCategory(data.category)
         : data.category,
   };
-
-  let { data: tournament, error } = await getSupabaseClient()
-    .from('tournaments')
-    .update(normalizedData)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (isMissingTournamentColumnError(error, 'advance_per_group')) {
-    ({ data: tournament, error } = await getSupabaseClient()
-      .from('tournaments')
-      .update(withoutField(normalizedData, 'advance_per_group'))
-      .eq('id', id)
-      .select()
-      .single());
-  }
+  const { data: tournament, error } = await mutateTournamentWithSchemaFallback(
+    'update',
+    normalizedData,
+    id
+  );
 
   if (error) {
-    console.error('Error updating tournament:', error);
+    console.error('Error updating tournament:', {
+      code: error.code ?? null,
+      message: error.message,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
     return { data: null, error: new Error(error.message) };
   }
 
@@ -269,14 +334,17 @@ export async function saveBracketData(
 export async function deleteTournament(
   id: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('tournaments')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting tournament:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'tournaments',
+      operation: 'delete',
+      match: { id },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error deleting tournament:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };
@@ -302,7 +370,6 @@ export async function duplicateTournament(
     name: newName || `${original.name} (copy)`,
     category: normalizeRobotCategory(original.category),
     venue: original.venue,
-    date: original.date,
     format: original.format,
     size: original.size,
     groups_count: original.groups_count,

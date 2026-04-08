@@ -10,6 +10,7 @@ import type {
   DbStandingUpdate,
   DbMatch,
 } from '@/lib/supabase/database.types';
+import { secureMutation } from './secureMutation';
 
 // =============================================
 // CREATE
@@ -18,18 +19,19 @@ import type {
 export async function createStanding(
   data: DbStandingInsert
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
-  const { data: standing, error } = await getSupabaseClient()
-    .from('standings')
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating standing:', error);
-    return { data: null, error: new Error(error.message) };
+  try {
+    const standing = await secureMutation<DbStanding>({
+      table: 'standings',
+      operation: 'insert',
+      data,
+      single: true,
+    });
+    return { data: standing, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error creating standing:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data: standing, error: null };
 }
 
 export async function createStandings(
@@ -39,17 +41,18 @@ export async function createStandings(
     return { data: [], error: null };
   }
 
-  const { data, error } = await getSupabaseClient()
-    .from('standings')
-    .insert(standings)
-    .select();
-
-  if (error) {
-    console.error('Error creating standings:', error);
-    return { data: [], error: new Error(error.message) };
+  try {
+    const data = await secureMutation<DbStanding[]>({
+      table: 'standings',
+      operation: 'insert',
+      data: standings,
+    });
+    return { data: data || [], error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error creating standings:', message);
+    return { data: [], error: new Error(message) };
   }
-
-  return { data: data || [], error: null };
 }
 
 /**
@@ -205,20 +208,20 @@ export async function updateStanding(
   robotId: string,
   data: DbStandingUpdate
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
-  const { data: standing, error } = await getSupabaseClient()
-    .from('standings')
-    .update(data)
-    .eq('tournament_id', tournamentId)
-    .eq('robot_id', robotId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating standing:', error);
-    return { data: null, error: new Error(error.message) };
+  try {
+    const standing = await secureMutation<DbStanding>({
+      table: 'standings',
+      operation: 'update',
+      data,
+      match: { tournament_id: tournamentId, robot_id: robotId },
+      single: true,
+    });
+    return { data: standing, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error updating standing:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data: standing, error: null };
 }
 
 /**
@@ -310,15 +313,17 @@ export async function deleteStanding(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('standings')
-    .delete()
-    .eq('tournament_id', tournamentId)
-    .eq('robot_id', robotId);
-
-  if (error) {
-    console.error('Error deleting standing:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'standings',
+      operation: 'delete',
+      match: { tournament_id: tournamentId, robot_id: robotId },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error deleting standing:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };
@@ -327,14 +332,17 @@ export async function deleteStanding(
 export async function deleteTournamentStandings(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('standings')
-    .delete()
-    .eq('tournament_id', tournamentId);
-
-  if (error) {
-    console.error('Error deleting standings:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'standings',
+      operation: 'delete',
+      match: { tournament_id: tournamentId },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error deleting standings:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };
@@ -424,13 +432,17 @@ export async function recalculateStandings(
   }
 
   // Upsert standings
-  const { error } = await getSupabaseClient().from('standings').upsert(standingUpdates, {
-    onConflict: 'tournament_id,robot_id',
-  });
-
-  if (error) {
-    console.error('Error recalculating standings:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<DbStanding[]>({
+      table: 'standings',
+      operation: 'upsert',
+      data: standingUpdates,
+      onConflict: 'tournament_id,robot_id',
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error recalculating standings:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };

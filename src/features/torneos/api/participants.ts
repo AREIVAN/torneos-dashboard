@@ -5,6 +5,7 @@
 
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { normalizeRobotCategory } from '@/lib/categoryNormalization';
+import { secureMutation } from './secureMutation';
 import type {
   DbParticipant,
   DbParticipantInsert,
@@ -28,22 +29,22 @@ export async function addParticipant(
     seed: seed ?? null,
   };
 
-  const { data, error } = await getSupabaseClient()
-    .from('tournament_participants')
-    .insert(insert)
-    .select()
-    .single();
-
-  if (error) {
-    // Handle duplicate entry gracefully
-    if (error.code === '23505') {
+  try {
+    const data = await secureMutation<DbParticipant>({
+      table: 'tournament_participants',
+      operation: 'insert',
+      data: insert,
+      single: true,
+    });
+    return { data, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (message.toLowerCase().includes('duplicate')) {
       return { data: null, error: new Error('Robot already registered in this tournament') };
     }
-    console.error('Error adding participant:', error);
-    return { data: null, error: new Error(error.message) };
+    console.error('Error adding participant:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data, error: null };
 }
 
 export async function addParticipants(
@@ -57,17 +58,18 @@ export async function addParticipants(
     seed: robot.seed ?? index + 1,
   }));
 
-  const { data, error } = await getSupabaseClient()
-    .from('tournament_participants')
-    .insert(inserts)
-    .select();
-
-  if (error) {
-    console.error('Error adding participants:', error);
-    return { data: [], errors: [new Error(error.message)] };
+  try {
+    const data = await secureMutation<DbParticipant[]>({
+      table: 'tournament_participants',
+      operation: 'insert',
+      data: inserts,
+    });
+    return { data: data || [], errors: [] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error adding participants:', message);
+    return { data: [], errors: [new Error(message)] };
   }
-
-  return { data: data || [], errors: [] };
 }
 
 // =============================================
@@ -138,20 +140,20 @@ export async function updateParticipantSeed(
   robotId: string,
   seed: number
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
-  const { data, error } = await getSupabaseClient()
-    .from('tournament_participants')
-    .update({ seed })
-    .eq('tournament_id', tournamentId)
-    .eq('robot_id', robotId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating participant seed:', error);
-    return { data: null, error: new Error(error.message) };
+  try {
+    const data = await secureMutation<DbParticipant>({
+      table: 'tournament_participants',
+      operation: 'update',
+      data: { seed },
+      match: { tournament_id: tournamentId, robot_id: robotId },
+      single: true,
+    });
+    return { data, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error updating participant seed:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data, error: null };
 }
 
 export async function reorderParticipants(
@@ -160,15 +162,11 @@ export async function reorderParticipants(
 ): Promise<{ error: Error | null }> {
   // Update seeds based on array order
   const updates = robotIds.map((robotId, index) =>
-    getSupabaseClient()
-      .from('tournament_participants')
-      .update({ seed: index + 1 })
-      .eq('tournament_id', tournamentId)
-      .eq('robot_id', robotId)
+    updateParticipantSeed(tournamentId, robotId, index + 1)
   );
 
   const results = await Promise.all(updates);
-  const errors = results.filter((r) => r.error);
+  const errors = results.filter((r) => r.error !== null);
 
   if (errors.length > 0) {
     console.error('Errors reordering participants:', errors);
@@ -186,15 +184,17 @@ export async function removeParticipant(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('tournament_participants')
-    .delete()
-    .eq('tournament_id', tournamentId)
-    .eq('robot_id', robotId);
-
-  if (error) {
-    console.error('Error removing participant:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'tournament_participants',
+      operation: 'delete',
+      match: { tournament_id: tournamentId, robot_id: robotId },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error removing participant:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };
@@ -203,14 +203,17 @@ export async function removeParticipant(
 export async function removeAllParticipants(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('tournament_participants')
-    .delete()
-    .eq('tournament_id', tournamentId);
-
-  if (error) {
-    console.error('Error removing all participants:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'tournament_participants',
+      operation: 'delete',
+      match: { tournament_id: tournamentId },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error removing all participants:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };

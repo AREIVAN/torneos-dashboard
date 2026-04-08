@@ -11,6 +11,7 @@ import type {
   BracketType,
 } from '@/lib/supabase/database.types';
 import type { Bracket, Match, ViewState } from '../lib/types';
+import { secureMutation } from './secureMutation';
 
 // =============================================
 // CREATE
@@ -19,18 +20,19 @@ import type { Bracket, Match, ViewState } from '../lib/types';
 export async function createMatch(
   data: DbMatchInsert
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
-  const { data: match, error } = await getSupabaseClient()
-    .from('matches')
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating match:', error);
-    return { data: null, error: new Error(error.message) };
+  try {
+    const match = await secureMutation<DbMatch>({
+      table: 'matches',
+      operation: 'insert',
+      data,
+      single: true,
+    });
+    return { data: match, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error creating match:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data: match, error: null };
 }
 
 export async function createMatches(
@@ -40,17 +42,18 @@ export async function createMatches(
     return { data: [], error: null };
   }
 
-  const { data, error } = await getSupabaseClient()
-    .from('matches')
-    .insert(matches)
-    .select();
-
-  if (error) {
-    console.error('Error creating matches:', error);
-    return { data: [], error: new Error(error.message) };
+  try {
+    const data = await secureMutation<DbMatch[]>({
+      table: 'matches',
+      operation: 'insert',
+      data: matches,
+    });
+    return { data: data || [], error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error creating matches:', message);
+    return { data: [], error: new Error(message) };
   }
-
-  return { data: data || [], error: null };
 }
 
 // =============================================
@@ -165,19 +168,20 @@ export async function updateMatch(
   id: string,
   data: DbMatchUpdate
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
-  const { data: match, error } = await getSupabaseClient()
-    .from('matches')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating match:', error);
-    return { data: null, error: new Error(error.message) };
+  try {
+    const match = await secureMutation<DbMatch>({
+      table: 'matches',
+      operation: 'update',
+      data,
+      match: { id },
+      single: true,
+    });
+    return { data: match, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error updating match:', message);
+    return { data: null, error: new Error(message) };
   }
-
-  return { data: match, error: null };
 }
 
 /**
@@ -276,14 +280,17 @@ export async function resetMatch(
 export async function deleteMatch(
   id: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('matches')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting match:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'matches',
+      operation: 'delete',
+      match: { id },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error deleting match:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };
@@ -292,14 +299,17 @@ export async function deleteMatch(
 export async function deleteTournamentMatches(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await getSupabaseClient()
-    .from('matches')
-    .delete()
-    .eq('tournament_id', tournamentId);
-
-  if (error) {
-    console.error('Error deleting tournament matches:', error);
-    return { error: new Error(error.message) };
+  try {
+    await secureMutation<null>({
+      table: 'matches',
+      operation: 'delete',
+      match: { tournament_id: tournamentId },
+      returning: false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Error deleting tournament matches:', message);
+    return { error: new Error(message) };
   }
 
   return { error: null };

@@ -28,7 +28,7 @@ import {
   clearLosersMatch,
 } from '../lib/bracketUtils';
 import { syncThirdPlaceMatchFromBracket } from '../lib/placements';
-import { validateOrganizerToken } from '../lib/organizerAuth';
+import { hasOrganizerSession, validateOrganizerToken } from '../lib/organizerAuth';
 import {
   createTournament as apiCreateTournament,
   getTournamentWithDetails,
@@ -107,7 +107,8 @@ interface DbTournamentStore {
   generate: () => Promise<void>;
   clearView: () => void;
   setViewMode: (mode: 'organizer' | 'competitor') => void;
-  unlockOrganizerMode: (token: string) => boolean;
+  unlockOrganizerMode: (token: string) => Promise<boolean>;
+  refreshOrganizerSession: () => Promise<boolean>;
   setViewStyle: (style: 'columns' | 'map') => void;
   toggleMatchWin: (bracketId: string, ri: number, mi: number, side: 'a' | 'b') => void;
   clearMatch: (bracketId: string, ri: number, mi: number) => void;
@@ -297,11 +298,22 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       viewMode: mode === 'organizer' && !state.organizerUnlocked ? 'competitor' : mode,
     })),
 
-  unlockOrganizerMode: (token) => {
-    const ok = validateOrganizerToken(token);
+  unlockOrganizerMode: async (token) => {
+    const ok = await validateOrganizerToken(token);
     if (ok) {
       set({ organizerUnlocked: true, viewMode: 'organizer' });
+    } else {
+      set({ organizerUnlocked: false, viewMode: 'competitor' });
     }
+    return ok;
+  },
+
+  refreshOrganizerSession: async () => {
+    const ok = await hasOrganizerSession();
+    set((state) => ({
+      organizerUnlocked: ok,
+      viewMode: ok ? state.viewMode : 'competitor',
+    }));
     return ok;
   },
 

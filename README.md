@@ -25,6 +25,32 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Organizer Security (Phase 2)
+
+- Organizer auth uses per-token scope and server-issued `httpOnly` sessions.
+- Mutations in `/api/torneos/secure-write` are allowed only for tournaments included in the session scope.
+- Organizer tokens are persisted hashed (`scrypt + salt`) in `public.organizer_tokens`.
+- Sessions are persisted in `public.organizer_sessions` to support revocation.
+
+### Temporary compatibility fallback
+
+- The legacy token (`areivan`, from `ORGANIZER_MODE_TOKEN`) remains enabled only while there are zero rows in `public.organizer_tokens`.
+- As soon as at least one organizer token exists, legacy fallback is disabled automatically.
+
+### Apply migrations
+
+Run these commands from the repository root:
+
+```bash
+supabase db push
+```
+
+If you run against a linked remote project and want to include all local migrations explicitly:
+
+```bash
+supabase db push --include-all
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
