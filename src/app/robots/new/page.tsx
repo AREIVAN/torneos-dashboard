@@ -73,6 +73,7 @@ export default function NewRobotPage() {
       equipo: "",
       controlador: "",
       escuela: "",
+      contacto: "",
       inspeccion_estado: "pendiente",
     } as FormValues,
     validators: {
@@ -297,7 +298,7 @@ export default function NewRobotPage() {
                     <span className="text-[11px] text-brand-text/45">{(field.state.value || "").length}/40</span>
                   </div>
                   <input
-                    value={field.state.value}
+                    value={field.state.value ?? ""}
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="email@ejemplo.com o +52..."
                     maxLength={40}
