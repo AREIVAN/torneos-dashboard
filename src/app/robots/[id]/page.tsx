@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
@@ -27,21 +27,42 @@ function InspectionBadge({ estado }: { estado?: string }) {
 
 export default function RobotViewerPage() {
   const { id } = useParams();
+  const robotId = Array.isArray(id) ? id[0] : id;
+  const queryClient = useQueryClient();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const { data: robot, isLoading, error } = useQuery({
-    queryKey: ['robot', id],
+    queryKey: ['robot', robotId],
     queryFn: async () => {
       const { data, error } = await getSupabaseClient()
         .from('robot_cards')
         .select('*')
-        .eq('robot_id', id)
+        .eq('robot_id', robotId)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!id
+    enabled: !!robotId
   });
+
+  useEffect(() => {
+    if (!robotId) return;
+
+    const channel = getSupabaseClient()
+      .channel(`robot-cards-detail-${robotId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'robot_cards', filter: `robot_id=eq.${robotId}` },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['robot', robotId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void getSupabaseClient().removeChannel(channel);
+    };
+  }, [queryClient, robotId]);
 
   const robotData = robot ? extractRobotFields(robot) : null;
 
@@ -95,7 +116,7 @@ export default function RobotViewerPage() {
           <Breadcrumbs 
             items={[
               { label: "Robots", href: "/robots/mine" },
-              { label: robotData?.nombre || `#${id}` }
+              { label: robotData?.nombre || `#${robotId}` }
             ]} 
           />
           <b className="text-lg tracking-wide text-brand-text">{isLoading ? 'Cargando...' : robotData?.nombre || 'Robot no encontrado'}</b>
@@ -113,7 +134,7 @@ export default function RobotViewerPage() {
         ) : error || !robot ? (
           <div className="flex flex-col items-center justify-center min-h-[300px] text-center w-full">
             <b className="text-brand-hot text-xl mb-2">Error 404</b>
-            <span className="text-brand-muted">El Robot ID #{id} no fue encontrado o ocurrió un error.</span>
+            <span className="text-brand-muted">El Robot ID #{robotId} no fue encontrado o ocurrió un error.</span>
             <Link href="/" className="text-brand-neon font-bold mt-4 hover:underline">Volver al Dashboard</Link>
           </div>
         ) : (

@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { fetchTeams, fetchTeamRobots } from "@/features/teams/api/teams";
 import { SkeletonTeamItem, SkeletonRobotCard } from "@/components/ui/skeleton";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function TeamsPage() {
   const [search, setSearch] = useState("");
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ["teams"],
@@ -36,6 +39,26 @@ export default function TeamsPage() {
 
   const selectedTeam = teams.find((t) => t.id === effectiveSelectedId);
 
+  useEffect(() => {
+    const channel = getSupabaseClient()
+      .channel('robot-cards-teams')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'robot_cards' }, (payload: RealtimePostgresChangesPayload<{ team_id?: string }>) => {
+        const nextTeamId = (payload.new as { team_id?: unknown } | null)?.team_id;
+        const prevTeamId = (payload.old as { team_id?: unknown } | null)?.team_id;
+        const nextId = typeof nextTeamId === 'string' ? nextTeamId : '';
+        const prevId = typeof prevTeamId === 'string' ? prevTeamId : '';
+
+        if (!effectiveSelectedId || nextId === effectiveSelectedId || prevId === effectiveSelectedId) {
+          void queryClient.invalidateQueries({ queryKey: ['team-robots'] });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      void getSupabaseClient().removeChannel(channel);
+    };
+  }, [effectiveSelectedId, queryClient]);
+
   return (
     <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-3.5 border-b border-brand-stroke/25">
@@ -44,11 +67,13 @@ export default function TeamsPage() {
           <b className="text-lg tracking-wide text-brand-text">Teams</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <button
-            onClick={() => {
-              // Trigger refetch by clearing cache
-              window.location.reload();
-            }}
+            <button
+              onClick={() => {
+                void Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ["teams"] }),
+                  queryClient.invalidateQueries({ queryKey: ["team-robots"] }),
+                ]);
+              }}
             className="border border-brand-hot/45 bg-linear-to-r from-brand-hot/20 to-brand-hot/5 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
           >
             Actualizar

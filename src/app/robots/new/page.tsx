@@ -2,13 +2,16 @@
 /* eslint-disable react/no-children-prop */
 
 import { useForm } from "@tanstack/react-form";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { useRobotStore } from "@/store/useRobotStore";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { fetchTeams } from "@/features/teams/api/teams";
 
 const robotSchema = z.object({
   nombre: z.string().min(1, "Obligatorio").max(24, "Máximo 24 caracteres"),
@@ -46,6 +49,13 @@ function formatFieldErrors(errors: unknown[] | undefined): string {
 export default function NewRobotPage() {
   const router = useRouter();
   const addMine = useRobotStore((state) => state.addMine);
+  const queryClient = useQueryClient();
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams"],
+    queryFn: fetchTeams,
+  });
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': ['.jpeg', '.jpg', '.png'] },
@@ -75,10 +85,12 @@ export default function NewRobotPage() {
         
         const robotId = String(ridData).padStart(4, "0");
         const qrLink = `${window.location.origin}/robots/${robotId}`;
+        const teamId = selectedTeamId || null;
 
         const { error } = await getSupabaseClient().from("robot_cards").insert([
           {
             robot_id: robotId,
+            team_id: teamId,
             qr_link: qrLink,
             qr_offline: qrLink,
             data: {
@@ -103,6 +115,15 @@ export default function NewRobotPage() {
         if (error) throw error;
 
         addMine(robotId);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["robots"] }),
+          queryClient.invalidateQueries({ queryKey: ["my-robots"] }),
+          queryClient.invalidateQueries({ queryKey: ["robot", robotId] }),
+          queryClient.invalidateQueries({ queryKey: ["latest-robots"] }),
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+          queryClient.invalidateQueries({ queryKey: ["teams"] }),
+          queryClient.invalidateQueries({ queryKey: ["team-robots"] }),
+        ]);
         toast.success("Robot registrado exitosamente. ID: " + robotId);
         router.push(`/robots/${robotId}`);
       } catch (err: unknown) {
@@ -196,6 +217,24 @@ export default function NewRobotPage() {
               name="equipo"
               children={(field) => (
                 <div>
+                  <label className="block text-xs text-brand-muted/80 mb-1.5">Equipo registrado (opcional)</label>
+                  <select
+                    value={selectedTeamId}
+                    onChange={(e) => {
+                      const teamId = e.target.value;
+                      setSelectedTeamId(teamId);
+                      const selectedTeam = teams.find((team) => team.id === teamId);
+                      field.handleChange(selectedTeam?.name || "");
+                    }}
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none mb-2"
+                  >
+                    <option value="">(sin equipo)</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
                   <div className="flex items-baseline justify-between gap-2.5 mb-1.5">
                     <label className="text-xs text-brand-muted/80">Equipo</label>
                     <span className="text-[11px] text-brand-text/45">{field.state.value.length}/24</span>

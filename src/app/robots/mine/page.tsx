@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useRobotStore } from "@/store/useRobotStore";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { extractRobotFields } from '@/lib/robotHelpers';
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
@@ -11,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 export default function MisRobotsPage() {
   const mineIds = useRobotStore((state) => state.mineIds);
   const clearMine = useRobotStore((state) => state.clearMine);
+  const queryClient = useQueryClient();
 
   const { data: myRobots, isLoading } = useQuery({
     queryKey: ['my-robots', mineIds],
@@ -25,6 +28,29 @@ export default function MisRobotsPage() {
     },
     enabled: mineIds.length > 0
   });
+
+  useEffect(() => {
+    if (mineIds.length === 0) return;
+
+    const mineSet = new Set(mineIds);
+    const channel = getSupabaseClient()
+      .channel(`robot-cards-mine-${mineIds.join('-')}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'robot_cards' }, (payload: RealtimePostgresChangesPayload<{ robot_id?: string }>) => {
+        const nextRobotId = (payload.new as { robot_id?: unknown } | null)?.robot_id;
+        const prevRobotId = (payload.old as { robot_id?: unknown } | null)?.robot_id;
+        const nextId = typeof nextRobotId === 'string' ? nextRobotId : '';
+        const prevId = typeof prevRobotId === 'string' ? prevRobotId : '';
+
+        if (mineSet.has(nextId) || mineSet.has(prevId)) {
+          void queryClient.invalidateQueries({ queryKey: ['my-robots'] });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      void getSupabaseClient().removeChannel(channel);
+    };
+  }, [mineIds, queryClient]);
 
   return (
     <section className="bg-linear-to-b from-brand-panel/90 to-brand-panel2/70 border border-brand-stroke/35 shadow-[inset_0_0_0_1px_rgba(122, 63, 255,0.08),0_18px_60px_rgba(0,0,0,0.55)] rounded-[22px] overflow-hidden min-h-[500px]">
