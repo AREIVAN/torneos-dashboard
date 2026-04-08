@@ -27,6 +27,8 @@ import {
   clearGrandFinal,
   clearLosersMatch,
 } from '../lib/bracketUtils';
+import { syncThirdPlaceMatchFromBracket } from '../lib/placements';
+import { validateOrganizerToken } from '../lib/organizerAuth';
 import {
   createTournament as apiCreateTournament,
   getTournamentWithDetails,
@@ -39,6 +41,24 @@ import {
   syncTournamentMatches,
   recalculateStandings,
 } from '../api';
+
+function toggleStandaloneMatchWin(match: Bracket['rounds'][number][number], side: 'a' | 'b') {
+  if (!match) return;
+  if (side === 'a') {
+    match.wa = Math.min(2, match.wa + 1);
+    if (match.wa >= 2) match.winner = 'a';
+  } else {
+    match.wb = Math.min(2, match.wb + 1);
+    if (match.wb >= 2) match.winner = 'b';
+  }
+}
+
+function clearStandaloneMatch(match: Bracket['rounds'][number][number]) {
+  if (!match) return;
+  match.wa = 0;
+  match.wb = 0;
+  match.winner = null;
+}
 
 async function syncTournamentProgress(tournamentId: string, view: ViewState) {
   const matchesResult = await syncTournamentMatches(tournamentId, view);
@@ -67,6 +87,7 @@ interface DbTournamentStore {
   players: Player[];
   view: ViewState | null;
   viewMode: 'organizer' | 'competitor';
+  organizerUnlocked: boolean;
   viewStyle: 'columns' | 'map';
   
   // Sync state
@@ -86,6 +107,7 @@ interface DbTournamentStore {
   generate: () => Promise<void>;
   clearView: () => void;
   setViewMode: (mode: 'organizer' | 'competitor') => void;
+  unlockOrganizerMode: (token: string) => boolean;
   setViewStyle: (style: 'columns' | 'map') => void;
   toggleMatchWin: (bracketId: string, ri: number, mi: number, side: 'a' | 'b') => void;
   clearMatch: (bracketId: string, ri: number, mi: number) => void;
@@ -121,7 +143,8 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
   tournament: { ...defaultTournament },
   players: [],
   view: null,
-  viewMode: 'organizer',
+  viewMode: 'competitor',
+  organizerUnlocked: false,
   viewStyle: 'columns',
   isSyncing: false,
   lastSyncedAt: null,
@@ -191,14 +214,19 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       return;
     }
 
-    set({ viewMode: 'organizer', viewStyle: 'columns' });
+    const nextMode = get().organizerUnlocked ? 'organizer' : 'competitor';
+    set({ viewMode: nextMode, viewStyle: 'columns' });
 
     let view: ViewState;
 
     if (tournament.format === 'single') {
       const bracket = buildSingleBracketBO3(players, N);
       autoAdvanceByesBO3(bracket);
-      view = { type: 'single', bracket };
+      view = {
+        type: 'single',
+        bracket,
+        thirdPlaceMatch: syncThirdPlaceMatchFromBracket(bracket, undefined, 'single-third-place'),
+      };
     } else if (tournament.format === 'groups') {
       const g = Math.min(tournament.groups, Math.max(2, players.length));
       const adv = Math.max(1, tournament.adv);
@@ -210,7 +238,13 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       const finalN = Math.max(2, qualifiers.length);
       const bracket = buildSingleBracketBO3(qualifiers, finalN);
       autoAdvanceByesBO3(bracket);
-      view = { type: 'groups', groups, qualifiers, finalBracket: bracket };
+      view = {
+        type: 'groups',
+        groups,
+        qualifiers,
+        finalBracket: bracket,
+        finalThirdPlaceMatch: syncThirdPlaceMatchFromBracket(bracket, undefined, 'groups-third-place'),
+      };
     } else {
       const dbl = buildDoubleStructure(players, N);
       view = { type: 'double', dbl, tournamentResolved: false, champion: null };
@@ -258,7 +292,18 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
 
   clearView: () => set({ view: null }),
 
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setViewMode: (mode) =>
+    set((state) => ({
+      viewMode: mode === 'organizer' && !state.organizerUnlocked ? 'competitor' : mode,
+    })),
+
+  unlockOrganizerMode: (token) => {
+    const ok = validateOrganizerToken(token);
+    if (ok) {
+      set({ organizerUnlocked: true, viewMode: 'organizer' });
+    }
+    return ok;
+  },
 
   setViewStyle: (style) => set({ viewStyle: style }),
 
@@ -267,7 +312,8 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
   // =============================================
 
   toggleMatchWin: (bracketId, ri, mi, side) => {
-    const { view, tournamentId } = get();
+    const { view, tournamentId, viewMode } = get();
+    if (viewMode !== 'organizer') return;
     if (!view || view.tournamentResolved) return;
 
     if (view.type === 'double' && view.dbl) {
@@ -335,6 +381,34 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     }
 
     let bracket: Bracket | undefined;
+    if (view.type === 'single' && bracketId === 'single-third-place' && view.thirdPlaceMatch) {
+      const m = view.thirdPlaceMatch;
+      if (m.winner === side) {
+        clearStandaloneMatch(m);
+      } else {
+        toggleStandaloneMatchWin(m, side);
+      }
+      set({ view: { ...view, thirdPlaceMatch: { ...m } } });
+      if (tournamentId) {
+        get().syncBracket();
+      }
+      return;
+    }
+
+    if (view.type === 'groups' && bracketId === 'groups-third-place' && view.finalThirdPlaceMatch) {
+      const m = view.finalThirdPlaceMatch;
+      if (m.winner === side) {
+        clearStandaloneMatch(m);
+      } else {
+        toggleStandaloneMatchWin(m, side);
+      }
+      set({ view: { ...view, finalThirdPlaceMatch: { ...m } } });
+      if (tournamentId) {
+        get().syncBracket();
+      }
+      return;
+    }
+
     if (view.type === 'single') {
       bracket = view.bracket;
     } else if (view.type === 'groups') {
@@ -355,10 +429,16 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     }
 
     if (view.type === 'single') {
-      set({ view: { ...view, bracket: { ...bracket! } } });
+      const thirdPlaceMatch = syncThirdPlaceMatchFromBracket(bracket, view.thirdPlaceMatch, 'single-third-place');
+      set({ view: { ...view, bracket: { ...bracket! }, thirdPlaceMatch } });
     } else if (view.type === 'groups') {
       if (bracketId === 'final') {
-        set({ view: { ...view, finalBracket: { ...bracket! } } });
+        const finalThirdPlaceMatch = syncThirdPlaceMatchFromBracket(
+          bracket,
+          view.finalThirdPlaceMatch,
+          'groups-third-place'
+        );
+        set({ view: { ...view, finalBracket: { ...bracket! }, finalThirdPlaceMatch } });
       }
     }
 
@@ -369,7 +449,8 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
   },
 
   clearMatch: (bracketId, ri, mi) => {
-    const { view, tournamentId } = get();
+    const { view, tournamentId, viewMode } = get();
+    if (viewMode !== 'organizer') return;
     if (!view) return;
 
     if (view.type === 'double' && view.dbl) {
@@ -393,6 +474,26 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     }
 
     let bracket: Bracket | undefined;
+    if (view.type === 'single' && bracketId === 'single-third-place' && view.thirdPlaceMatch) {
+      const m = view.thirdPlaceMatch;
+      clearStandaloneMatch(m);
+      set({ view: { ...view, thirdPlaceMatch: { ...m } } });
+      if (tournamentId) {
+        get().syncBracket();
+      }
+      return;
+    }
+
+    if (view.type === 'groups' && bracketId === 'groups-third-place' && view.finalThirdPlaceMatch) {
+      const m = view.finalThirdPlaceMatch;
+      clearStandaloneMatch(m);
+      set({ view: { ...view, finalThirdPlaceMatch: { ...m } } });
+      if (tournamentId) {
+        get().syncBracket();
+      }
+      return;
+    }
+
     if (view.type === 'single') {
       bracket = view.bracket;
     } else if (view.type === 'groups') {
@@ -406,10 +507,16 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     clearMatchBO3(bracket, ri, mi);
 
     if (view.type === 'single') {
-      set({ view: { ...view, bracket: { ...bracket! } } });
+      const thirdPlaceMatch = syncThirdPlaceMatchFromBracket(bracket, view.thirdPlaceMatch, 'single-third-place');
+      set({ view: { ...view, bracket: { ...bracket! }, thirdPlaceMatch } });
     } else if (view.type === 'groups') {
       if (bracketId === 'final') {
-        set({ view: { ...view, finalBracket: { ...bracket! } } });
+        const finalThirdPlaceMatch = syncThirdPlaceMatchFromBracket(
+          bracket,
+          view.finalThirdPlaceMatch,
+          'groups-third-place'
+        );
+        set({ view: { ...view, finalBracket: { ...bracket! }, finalThirdPlaceMatch } });
       }
     }
 
@@ -517,7 +624,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
         tournament,
         players,
         view,
-        viewMode: 'organizer',
+        viewMode: get().organizerUnlocked ? 'organizer' : 'competitor',
         viewStyle: 'columns',
         isSyncing: false,
         lastSyncedAt: new Date(),
@@ -618,7 +725,8 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       tournament: { ...defaultTournament },
       players: [],
       view: null,
-      viewMode: 'organizer',
+      viewMode: 'competitor',
+      organizerUnlocked: false,
       viewStyle: 'columns',
       isSyncing: false,
       lastSyncedAt: null,
@@ -631,7 +739,8 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       tournament: { ...defaultTournament },
       players: [],
       view: null,
-      viewMode: 'organizer',
+      viewMode: 'competitor',
+      organizerUnlocked: false,
       viewStyle: 'columns',
     }),
 }));

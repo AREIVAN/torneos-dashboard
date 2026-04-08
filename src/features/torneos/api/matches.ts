@@ -312,8 +312,8 @@ function normalizeMatch(
   matchIndex: number,
   match: Match
 ): DbMatchInsert {
-  const robotAId = match.a?.rid || null;
-  const robotBId = match.b?.rid || null;
+  const robotAId = match.a?.rid || match.a?.id || null;
+  const robotBId = match.b?.rid || match.b?.id || null;
   const winnerId =
     match.winner === 'a' ? robotAId : match.winner === 'b' ? robotBId : null;
 
@@ -362,10 +362,18 @@ export async function syncTournamentMatches(
 
   if (view.type === 'single') {
     rows.push(...normalizeBracket(tournamentId, 'single', view.bracket));
+    if (view.thirdPlaceMatch) {
+      const roundIndex = view.bracket?.rounds.length ?? 1;
+      rows.push(normalizeMatch(tournamentId, 'single', roundIndex, 0, view.thirdPlaceMatch));
+    }
   }
 
   if (view.type === 'groups') {
     rows.push(...normalizeBracket(tournamentId, 'single', view.finalBracket));
+    if (view.finalThirdPlaceMatch) {
+      const roundIndex = view.finalBracket?.rounds.length ?? 1;
+      rows.push(normalizeMatch(tournamentId, 'single', roundIndex, 0, view.finalThirdPlaceMatch));
+    }
   }
 
   if (view.type === 'double' && view.dbl) {

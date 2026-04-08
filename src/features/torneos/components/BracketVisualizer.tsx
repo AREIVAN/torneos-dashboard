@@ -25,7 +25,7 @@ export default function BracketVisualizer({
   const rounds = transformBracketToRounds(bracket);
   const isOrganizerView = viewMode === "organizer";
 
-  const downloadMapImage = () => {
+  const buildMapSvg = () => {
     const colWidth = 280;
     const titleHeight = 42;
     const titleOffset = 10;
@@ -127,15 +127,71 @@ export default function BracketVisualizer({
       </svg>
     `;
 
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    return { svg, svgWidth, svgHeight };
+  };
+
+  const triggerDownload = (href: string, filename: string) => {
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `${exportFileName}.svg`;
+    a.href = href;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+  };
+
+  const downloadMapSvg = () => {
+    const { svg } = buildMapSvg();
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, `${exportFileName}.svg`);
     URL.revokeObjectURL(url);
+  };
+
+  const downloadMapJpg = async () => {
+    const { svg, svgWidth, svgHeight } = buildMapSvg();
+    const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("No se pudo renderizar el SVG para exportar JPG"));
+        img.src = svgUrl;
+      });
+
+      const maxSide = 4096;
+      const scale = Math.min(2, maxSide / Math.max(svgWidth, svgHeight));
+      const width = Math.max(1, Math.round(svgWidth * scale));
+      const height = Math.max(1, Math.round(svgHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No se pudo crear canvas 2D");
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(image, 0, 0, width, height);
+
+      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("No se pudo generar el JPG"));
+        }, "image/jpeg", 0.92);
+      });
+
+      const jpgUrl = URL.createObjectURL(jpegBlob);
+      triggerDownload(jpgUrl, `${exportFileName}.jpg`);
+      URL.revokeObjectURL(jpgUrl);
+    } catch (error) {
+      console.error(error);
+      alert("No se pudo exportar JPG. Intenta con SVG.");
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
   };
 
   const handleSeedClick = (roundIndex: number, seedIndex: number, side: "a" | "b") => {
@@ -154,12 +210,18 @@ export default function BracketVisualizer({
   return (
     <div className="overflow-auto custom-scroll">
       {exportable && (
-        <div className="px-4 pt-4 pb-1 flex justify-end">
+        <div className="px-4 pt-4 pb-1 flex flex-wrap justify-end gap-2">
           <button
-            onClick={downloadMapImage}
+            onClick={downloadMapSvg}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer transition-all"
           >
-            Guardar imagen
+            Exportar SVG
+          </button>
+          <button
+            onClick={() => void downloadMapJpg()}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer transition-all"
+          >
+            Exportar JPG
           </button>
         </div>
       )}

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useTournamentStore } from "../store/useTournamentStore";
 import type { Match, Bracket, DoubleStructure } from "../lib/types";
 import { isBye } from "../lib/bracketUtils";
+import { shouldRenderThirdPlaceMatch } from "../lib/placements";
 import BracketVisualizer from "./BracketVisualizer";
 
 function MatchCard({
@@ -97,6 +99,36 @@ function MatchCard({
   );
 }
 
+function ThirdPlaceMatchSection({
+  match,
+  bracketId,
+  viewMode,
+}: {
+  match?: Match;
+  bracketId: string;
+  viewMode: "organizer" | "competitor";
+}) {
+  if (!shouldRenderThirdPlaceMatch(match)) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-brand-stroke/20 bg-brand-panel/30 p-3">
+      <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Partido por 3er puesto</div>
+      <MatchCard
+        m={match}
+        viewMode={viewMode}
+        onWin={(side) => {
+          const { toggleMatchWin } = useTournamentStore.getState();
+          toggleMatchWin(bracketId, 0, 0, side);
+        }}
+        onClear={() => {
+          const { clearMatch } = useTournamentStore.getState();
+          clearMatch(bracketId, 0, 0);
+        }}
+      />
+    </div>
+  );
+}
+
 function RoundColumn({
   matches,
   title,
@@ -152,6 +184,8 @@ function BracketColumns({
         bracket={bracket}
         bracketId={bracketId}
         viewMode={viewMode}
+        exportable={viewMode === "competitor"}
+        exportFileName={bracketId ? `bracket-${bracketId}` : "bracket-main"}
         onWin={(ri, mi, side) => {
           const { toggleMatchWin } = useTournamentStore.getState();
           toggleMatchWin(bracketId || "main", ri, mi, side);
@@ -249,6 +283,11 @@ function GroupsView() {
             bracketId="final"
             viewMode={viewMode}
             viewStyle={viewStyle}
+          />
+          <ThirdPlaceMatchSection
+            match={view.finalThirdPlaceMatch}
+            bracketId="groups-third-place"
+            viewMode={viewMode}
           />
         </div>
       )}
@@ -408,8 +447,39 @@ export default function BracketView() {
     generate,
     clearView,
     setViewMode,
+    organizerUnlocked,
+    unlockOrganizerMode,
     setViewStyle,
   } = useTournamentStore();
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenValue, setTokenValue] = useState("");
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  const handleToggleViewMode = () => {
+    if (viewMode === "organizer") {
+      setViewMode("competitor");
+      setShowTokenInput(false);
+      setTokenError(null);
+      return;
+    }
+
+    if (organizerUnlocked) {
+      setViewMode("organizer");
+      return;
+    }
+
+    setShowTokenInput(true);
+  };
+
+  const handleUnlockOrganizerMode = () => {
+    if (unlockOrganizerMode(tokenValue)) {
+      setTokenError(null);
+      setTokenValue("");
+      setShowTokenInput(false);
+      return;
+    }
+    setTokenError("Token incorrecto.");
+  };
 
   const viewTitle =
     tournament.format === "groups"
@@ -451,9 +521,7 @@ export default function BracketView() {
             {viewStyle === "columns" ? "Ver mapa" : "Ver columnas"}
           </button>
           <button
-            onClick={() =>
-              setViewMode(viewMode === "organizer" ? "competitor" : "organizer")
-            }
+            onClick={handleToggleViewMode}
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
               viewMode === "organizer"
                 ? "border border-brand-neon/45 bg-brand-neon/20 text-brand-text"
@@ -466,6 +534,37 @@ export default function BracketView() {
       </div>
 
       <div className="p-4 flex-1 overflow-auto custom-scroll">
+        {showTokenInput && viewMode !== "organizer" && (
+          <div className="mb-3 rounded-xl border border-brand-neon/25 bg-brand-panel/40 p-3">
+            <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Token de organizador</div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="password"
+                value={tokenValue}
+                onChange={(event) => {
+                  setTokenValue(event.target.value);
+                  setTokenError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleUnlockOrganizerMode();
+                  }
+                }}
+                placeholder="Ingresa token"
+                className="flex-1 border border-brand-stroke/25 bg-brand-bg/30 text-brand-text px-2.5 py-2 rounded-lg text-sm"
+              />
+              <button
+                onClick={handleUnlockOrganizerMode}
+                className="border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-3 py-2 rounded-lg text-xs font-bold"
+              >
+                Habilitar modo organizador
+              </button>
+            </div>
+            {tokenError && <div className="text-xs text-brand-hot mt-2">{tokenError}</div>}
+          </div>
+        )}
+
         {!view ? (
           <div className="flex flex-col items-center text-center max-w-[300px] mx-auto py-12 opacity-60">
             <svg
@@ -491,12 +590,19 @@ export default function BracketView() {
             </p>
           </div>
         ) : view.type === "single" && view.bracket ? (
-          <BracketColumns
-            bracket={view.bracket}
-            bracketId="main"
-            viewMode={viewMode}
-            viewStyle={viewStyle}
-          />
+          <>
+            <BracketColumns
+              bracket={view.bracket}
+              bracketId="main"
+              viewMode={viewMode}
+              viewStyle={viewStyle}
+            />
+            <ThirdPlaceMatchSection
+              match={view.thirdPlaceMatch}
+              bracketId="single-third-place"
+              viewMode={viewMode}
+            />
+          </>
         ) : view.type === "groups" ? (
           <GroupsView />
         ) : view.type === "double" ? (

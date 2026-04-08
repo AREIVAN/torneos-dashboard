@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Bracket, Match, ViewState } from "../lib/types";
+import { shouldRenderThirdPlaceMatch } from "../lib/placements";
 import BracketVisualizer from "./BracketVisualizer";
 
 interface SpectatorBracketViewProps {
@@ -80,6 +81,12 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
 
       <div className="p-3 space-y-4">
         {view.type === "single" && view.bracket && renderBracket(view.bracket, "bracket-single")}
+        {view.type === "single" && shouldRenderThirdPlaceMatch(view.thirdPlaceMatch) && (
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-wide text-brand-muted">Partido por 3er puesto</div>
+            <MatchCard match={view.thirdPlaceMatch} />
+          </div>
+        )}
 
         {view.type === "groups" && (
           <>
@@ -104,6 +111,12 @@ export function SpectatorBracketView({ view }: SpectatorBracketViewProps) {
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-wide text-brand-muted">Fase final</div>
                 {renderBracket(view.finalBracket, "bracket-fase-final")}
+                {shouldRenderThirdPlaceMatch(view.finalThirdPlaceMatch) && (
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-wide text-brand-muted">Partido por 3er puesto</div>
+                    <MatchCard match={view.finalThirdPlaceMatch} />
+                  </div>
+                )}
               </div>
             )}
           </>

@@ -18,6 +18,8 @@ import {
 import { GroupStandingsTable } from "@/features/torneos/components/GroupStandingsTable";
 import { FinalPlacementsPodium } from "@/features/torneos/components/FinalPlacementsPodium";
 import { SpectatorBracketView } from "@/features/torneos/components/SpectatorBracketView";
+import { getTopThreeFromView, hasPendingThirdPlaceMatch } from "@/features/torneos/lib/placements";
+import type { ViewState } from "@/features/torneos/lib/types";
 
 function statusLabel(status: string) {
   if (status === "draft") return "Borrador";
@@ -187,10 +189,25 @@ export default function TournamentDetailPage() {
 
   const setCompleted = async () => {
     if (!data) return;
+    const view = (data.bracket_data as ViewState | null) || null;
+    if (hasPendingThirdPlaceMatch(view)) {
+      alert("Falta definir el partido por 3er puesto antes de finalizar el torneo.");
+      return;
+    }
+
     const standingsRes = await getTournamentStandings(data.id);
     if (!standingsRes.error && standingsRes.data.length > 0) {
-      const placements = standingsRes.data.slice(0, 4).map((standing, index) => ({
-        robotId: standing.robot_id,
+      const topThreeFromBracket = getTopThreeFromView(view);
+      const orderedIds = [...topThreeFromBracket];
+
+      standingsRes.data.forEach((standing) => {
+        if (!orderedIds.includes(standing.robot_id)) {
+          orderedIds.push(standing.robot_id);
+        }
+      });
+
+      const placements = orderedIds.slice(0, 4).map((robotId, index) => ({
+        robotId,
         position: index + 1,
       }));
       await setFinalPlacements(data.id, placements);

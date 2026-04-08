@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useDbTournamentStore } from "../store/useDbTournamentStore";
 import type { Bracket, DoubleStructure, Match, Player, ViewState } from "../lib/types";
 import { isBye } from "../lib/bracketUtils";
+import { getTopThreeFromView, shouldRenderThirdPlaceMatch } from "../lib/placements";
 import BracketVisualizer from "./BracketVisualizer";
 
 interface RankedPlayer {
@@ -71,34 +72,7 @@ function computePlayerLists(players: Player[], view: ViewState | null) {
 }
 
 function computeTopThree(view: ViewState | null): string[] {
-  if (!view) return [];
-
-  if (view.type === "double" && view.dbl) {
-    const { dbl } = view;
-    if (!dbl.tournamentResolved || !dbl.champion) return [];
-    const mainGrandFinal = dbl.gfReset && dbl.grandFinal.length > 1 ? dbl.grandFinal[1] : dbl.grandFinal[0];
-    if (!mainGrandFinal?.winner) return [dbl.champion];
-    const second = getPlayerIdFromMatchSide(mainGrandFinal, mainGrandFinal.winner === "a" ? "b" : "a");
-    const losersFinalRound = dbl.losers.rounds[dbl.losers.rounds.length - 1] || [];
-    const losersFinalMatch = losersFinalRound[losersFinalRound.length - 1];
-    const third = losersFinalMatch ? getLoserId(losersFinalMatch) : null;
-    return [dbl.champion, second, third].filter((id, idx, arr): id is string => Boolean(id) && arr.indexOf(id) === idx);
-  }
-
-  const bracket = view.type === "single" ? view.bracket : view.finalBracket;
-  if (!bracket) return [];
-  const finalRound = bracket.rounds[bracket.rounds.length - 1] || [];
-  const finalMatch = finalRound[0];
-  if (!finalMatch?.winner) return [];
-
-  const first = getPlayerIdFromMatchSide(finalMatch, finalMatch.winner);
-  const second = getPlayerIdFromMatchSide(finalMatch, finalMatch.winner === "a" ? "b" : "a");
-
-  const semifinalRound = bracket.rounds[bracket.rounds.length - 2] || [];
-  const semifinalLosers = semifinalRound.map(getLoserId).filter((id): id is string => Boolean(id));
-  const third = semifinalLosers.find((id) => id !== second) || semifinalLosers[0] || null;
-
-  return [first, second, third].filter((id, idx, arr): id is string => Boolean(id) && arr.indexOf(id) === idx);
+  return getTopThreeFromView(view);
 }
 
 function MatchCard({
@@ -181,6 +155,36 @@ function MatchCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ThirdPlaceMatchSection({
+  match,
+  bracketId,
+  viewMode,
+}: {
+  match?: Match;
+  bracketId: string;
+  viewMode: "organizer" | "competitor";
+}) {
+  if (!shouldRenderThirdPlaceMatch(match)) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-brand-stroke/20 bg-brand-panel/30 p-3">
+      <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Partido por 3er puesto</div>
+      <MatchCard
+        m={match}
+        viewMode={viewMode}
+        onWin={(side) => {
+          const { toggleMatchWin } = useDbTournamentStore.getState();
+          toggleMatchWin(bracketId, 0, 0, side);
+        }}
+        onClear={() => {
+          const { clearMatch } = useDbTournamentStore.getState();
+          clearMatch(bracketId, 0, 0);
+        }}
+      />
     </div>
   );
 }
@@ -325,6 +329,11 @@ function GroupsView() {
             viewMode={viewMode}
             viewStyle={viewStyle}
           />
+          <ThirdPlaceMatchSection
+            match={view.finalThirdPlaceMatch}
+            bracketId="groups-third-place"
+            viewMode={viewMode}
+          />
         </div>
       )}
     </div>
@@ -451,6 +460,8 @@ export default function DbBracketView() {
     shufflePlayers,
     clearView,
     viewMode,
+    organizerUnlocked,
+    unlockOrganizerMode,
     setViewMode,
     setViewStyle,
     syncError,
@@ -467,6 +478,35 @@ export default function DbBracketView() {
   const topThree = useMemo(() => computeTopThree(view), [view]);
   const playerById = useMemo(() => new Map(players.map((player) => [player.i, player])), [players]);
   const showGenerationActions = !view;
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenValue, setTokenValue] = useState("");
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  const handleToggleViewMode = () => {
+    if (viewMode === "organizer") {
+      setViewMode("competitor");
+      setShowTokenInput(false);
+      setTokenError(null);
+      return;
+    }
+
+    if (organizerUnlocked) {
+      setViewMode("organizer");
+      return;
+    }
+
+    setShowTokenInput(true);
+  };
+
+  const handleUnlockOrganizerMode = () => {
+    if (unlockOrganizerMode(tokenValue)) {
+      setTokenError(null);
+      setTokenValue("");
+      setShowTokenInput(false);
+      return;
+    }
+    setTokenError("Token incorrecto.");
+  };
 
   return (
     <div className="rounded-[18px] border border-brand-stroke/20 bg-brand-bg/35 overflow-hidden flex flex-col">
@@ -509,7 +549,7 @@ export default function DbBracketView() {
             {viewStyle === "columns" ? "Ver mapa" : "Ver columnas"}
           </button>
           <button
-            onClick={() => setViewMode(viewMode === "organizer" ? "competitor" : "organizer")}
+            onClick={handleToggleViewMode}
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
               viewMode === "organizer"
                 ? "border border-brand-neon/45 bg-brand-neon/20 text-brand-text"
@@ -522,6 +562,37 @@ export default function DbBracketView() {
       </div>
 
       <div className="p-4 flex-1 overflow-auto custom-scroll">
+        {showTokenInput && viewMode !== "organizer" && (
+          <div className="mb-3 rounded-xl border border-brand-neon/25 bg-brand-panel/40 p-3">
+            <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Token de organizador</div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="password"
+                value={tokenValue}
+                onChange={(event) => {
+                  setTokenValue(event.target.value);
+                  setTokenError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleUnlockOrganizerMode();
+                  }
+                }}
+                placeholder="Ingresa token"
+                className="flex-1 border border-brand-stroke/25 bg-brand-bg/30 text-brand-text px-2.5 py-2 rounded-lg text-sm"
+              />
+              <button
+                onClick={handleUnlockOrganizerMode}
+                className="border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-3 py-2 rounded-lg text-xs font-bold"
+              >
+                Habilitar modo organizador
+              </button>
+            </div>
+            {tokenError && <div className="text-xs text-brand-hot mt-2">{tokenError}</div>}
+          </div>
+        )}
+
         {syncError && <p className="text-xs text-brand-hot mb-3">{syncError}</p>}
 
         {!view ? (
@@ -551,12 +622,19 @@ export default function DbBracketView() {
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start">
             <div>
               {view.type === "single" && view.bracket ? (
-                <BracketColumns
-                  bracket={view.bracket}
-                  bracketId="main"
-                  viewMode={viewMode}
-                  viewStyle={viewStyle}
-                />
+                <>
+                  <BracketColumns
+                    bracket={view.bracket}
+                    bracketId="main"
+                    viewMode={viewMode}
+                    viewStyle={viewStyle}
+                  />
+                  <ThirdPlaceMatchSection
+                    match={view.thirdPlaceMatch}
+                    bracketId="single-third-place"
+                    viewMode={viewMode}
+                  />
+                </>
               ) : view.type === "groups" ? (
                 <GroupsView />
               ) : view.type === "double" ? (
@@ -565,6 +643,30 @@ export default function DbBracketView() {
             </div>
 
             <aside className="rounded-xl border border-brand-stroke/20 bg-brand-panel/30 p-3 space-y-4">
+              {topThree.length > 0 && (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Top 3</div>
+                  <div className="space-y-1.5">
+                    {topThree.map((playerId, index) => {
+                      const player = playerById.get(playerId);
+                      const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+                      return (
+                        <div
+                          key={`${playerId}-${index}`}
+                          className="rounded-lg border border-brand-stroke/20 bg-brand-bg/25 px-2.5 py-1.5"
+                        >
+                          <div className="text-xs text-brand-muted">{badge} Puesto {index + 1}</div>
+                          <div className="text-sm font-bold text-brand-text truncate">
+                            {player?.n || playerId}
+                          </div>
+                          <div className="text-xs text-brand-muted truncate">{player?.t || "Sin equipo"}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div className="text-xs uppercase tracking-wide text-brand-neon/80 mb-2">Competidores en juego</div>
                 <div className="space-y-1 max-h-[220px] overflow-auto custom-scroll pr-1">
@@ -602,30 +704,6 @@ export default function DbBracketView() {
                   )}
                 </div>
               </div>
-
-              {topThree.length > 0 && (
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-brand-muted mb-2">Top 3</div>
-                  <div className="space-y-1.5">
-                    {topThree.map((playerId, index) => {
-                      const player = playerById.get(playerId);
-                      const badge = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
-                      return (
-                        <div
-                          key={`${playerId}-${index}`}
-                          className="rounded-lg border border-brand-stroke/20 bg-brand-bg/25 px-2.5 py-1.5"
-                        >
-                          <div className="text-xs text-brand-muted">{badge} Puesto {index + 1}</div>
-                          <div className="text-sm font-bold text-brand-text truncate">
-                            {player?.n || playerId}
-                          </div>
-                          <div className="text-xs text-brand-muted truncate">{player?.t || "Sin equipo"}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </aside>
           </div>
         )}

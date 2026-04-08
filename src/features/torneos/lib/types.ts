@@ -79,9 +79,11 @@ export interface GroupsResult {
 export interface ViewState {
   type: "single" | "groups" | "double";
   bracket?: Bracket;
+  thirdPlaceMatch?: Match;
   groups?: Player[][];
   qualifiers?: Player[];
   finalBracket?: Bracket;
+  finalThirdPlaceMatch?: Match;
   dbl?: DoubleStructure;
   tournamentResolved?: boolean;
   champion?: string | null;
