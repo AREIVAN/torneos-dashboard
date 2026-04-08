@@ -13,6 +13,28 @@
 -- - Micro Sumo
 -- - Nano Sumo
 
+CREATE OR REPLACE FUNCTION public._normalize_category_text(input_text TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $fn$
+  SELECT lower(
+    trim(
+      regexp_replace(
+        regexp_replace(
+          translate(coalesce(input_text, ''), 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'),
+          '[_-]+',
+          ' ',
+          'g'
+        ),
+        '[[:space:]]+',
+        ' ',
+        'g'
+      )
+    )
+  );
+$fn$;
+
 DO $$
 DECLARE
   target RECORD;
@@ -34,7 +56,7 @@ BEGIN
       AND c.data_type IN ('text', 'character varying', 'character')
   LOOP
     norm_expr := format(
-      'lower(trim(regexp_replace(regexp_replace(translate(coalesce(%1$I, ''''), ''áéíóúÁÉÍÓÚ'', ''aeiouAEIOU''), ''[_-]+'', '' '', ''g''), ''[[:space:]]+'', '' '', ''g'')))',
+      'public._normalize_category_text(%1$I)',
       target.column_name
     );
 
@@ -98,7 +120,7 @@ BEGIN
     EXECUTE format(
       'INSERT INTO _category_audit (table_name, column_name, raw_value, normalized_value) ' ||
       'SELECT %L, %L, %I, ' ||
-      'lower(trim(regexp_replace(regexp_replace(translate(coalesce(%I, ''''''), ''áéíóúÁÉÍÓÚ'', ''aeiouAEIOU''), ''[_-]+'', '' '', ''g''), ''[[:space:]]+'', '' '', ''g''))) ' ||
+      'public._normalize_category_text(%I) ' ||
       'FROM %I.%I WHERE %I IS NOT NULL;',
       target.table_name,
       target.column_name,
