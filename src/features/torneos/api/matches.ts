@@ -6,12 +6,110 @@
 import { getSupabaseClient } from '@/lib/supabase/client';
 import type {
   DbMatch,
+  DbMatchCompatRow,
   DbMatchInsert,
   DbMatchUpdate,
   BracketType,
+  MatchTableName,
 } from '@/lib/supabase/database.types';
 import type { Bracket, Match, ViewState } from '../lib/types';
 import { secureMutation } from './secureMutation';
+
+const MATCH_TABLE_CANDIDATES: MatchTableName[] = ['tournament_matches', 'matches'];
+let cachedMatchTable: MatchTableName | null = null;
+
+function isMissingSchemaEntityError(error: { message?: string | null } | null, entity: string) {
+  if (!error || !error.message) return false;
+  const message = error.message.toLowerCase();
+  const relationMissing = message.includes('relation') && message.includes('does not exist');
+  return (
+    message.includes(entity.toLowerCase()) &&
+    (message.includes('schema cache') || message.includes('could not find the table') || relationMissing)
+  );
+}
+
+async function resolveMatchTable() {
+  if (cachedMatchTable) {
+    return cachedMatchTable;
+  }
+
+  for (const candidate of MATCH_TABLE_CANDIDATES) {
+    const { error } = await getSupabaseClient().from(candidate).select('id').limit(1);
+    if (!isMissingSchemaEntityError(error, candidate)) {
+      cachedMatchTable = candidate;
+      return candidate;
+    }
+  }
+
+  cachedMatchTable = 'tournament_matches';
+  return cachedMatchTable;
+}
+
+function normalizeMatchRow(row: DbMatchCompatRow): DbMatch {
+  const meta = row.meta || {};
+
+  return {
+    id: row.id,
+    tournament_id: row.tournament_id,
+    bracket_type: (row.bracket_type || row.bracket || 'single') as BracketType,
+    round_index: row.round_index ?? row.round ?? 0,
+    match_index: row.match_index ?? row.match_no ?? 0,
+    group_index: row.group_index ?? meta.group_index ?? null,
+    robot_a_id: row.robot_a_id ?? row.a_robot_id ?? null,
+    robot_b_id: row.robot_b_id ?? row.b_robot_id ?? null,
+    wins_a: row.wins_a ?? row.wa ?? 0,
+    wins_b: row.wins_b ?? row.wb ?? 0,
+    winner_id: row.winner_id ?? row.winner_robot_id ?? null,
+    is_bye: row.is_bye ?? Boolean(meta.is_bye),
+    is_reset: row.is_reset ?? Boolean(meta.is_reset),
+    scheduled_at: row.scheduled_at ?? meta.scheduled_at ?? null,
+    completed_at: row.completed_at ?? meta.completed_at ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function toLegacyMatchPayload(data: DbMatchInsert) {
+  return {
+    tournament_id: data.tournament_id,
+    bracket: data.bracket_type,
+    round: data.round_index,
+    match_no: data.match_index,
+    a_robot_id: data.robot_a_id ?? null,
+    b_robot_id: data.robot_b_id ?? null,
+    wa: data.wins_a ?? 0,
+    wb: data.wins_b ?? 0,
+    winner_robot_id: data.winner_id ?? null,
+    meta: {
+      group_index: data.group_index ?? null,
+      is_bye: data.is_bye ?? false,
+      is_reset: data.is_reset ?? false,
+      scheduled_at: data.scheduled_at ?? null,
+      completed_at: data.completed_at ?? null,
+    },
+  };
+}
+
+function toLegacyMatchUpdatePayload(data: DbMatchUpdate) {
+  const payload: Record<string, unknown> = {};
+
+  if (Object.prototype.hasOwnProperty.call(data, 'robot_a_id')) {
+    payload.a_robot_id = data.robot_a_id ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'robot_b_id')) {
+    payload.b_robot_id = data.robot_b_id ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'wins_a')) {
+    payload.wa = data.wins_a ?? 0;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'wins_b')) {
+    payload.wb = data.wins_b ?? 0;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'winner_id')) {
+    payload.winner_robot_id = data.winner_id ?? null;
+  }
+  return payload;
+}
 
 // =============================================
 // CREATE
@@ -20,16 +118,21 @@ import { secureMutation } from './secureMutation';
 export async function createMatch(
   data: DbMatchInsert
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
+  const table = await resolveMatchTable();
   try {
-    const match = await secureMutation<DbMatch>({
-      table: 'matches',
+    const match = await secureMutation<DbMatchCompatRow>({
+      table,
       operation: 'insert',
-      data,
+      data: table === 'tournament_matches' ? toLegacyMatchPayload(data) : data,
       single: true,
     });
-    return { data: match, error: null };
+    return { data: normalizeMatchRow(match), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'matches' && message.includes('matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return createMatch(data);
+    }
     console.error('Error creating match:', message);
     return { data: null, error: new Error(message) };
   }
@@ -42,15 +145,20 @@ export async function createMatches(
     return { data: [], error: null };
   }
 
+  const table = await resolveMatchTable();
   try {
-    const data = await secureMutation<DbMatch[]>({
-      table: 'matches',
+    const data = await secureMutation<DbMatchCompatRow[]>({
+      table,
       operation: 'insert',
-      data: matches,
+      data: table === 'tournament_matches' ? matches.map(toLegacyMatchPayload) : matches,
     });
-    return { data: data || [], error: null };
+    return { data: (data || []).map(normalizeMatchRow), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'matches' && message.includes('matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return createMatches(matches);
+    }
     console.error('Error creating matches:', message);
     return { data: [], error: new Error(message) };
   }
@@ -63,18 +171,23 @@ export async function createMatches(
 export async function getMatch(
   id: string
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
+  const table = await resolveMatchTable();
   const { data, error } = await getSupabaseClient()
-    .from('matches')
+    .from(table)
     .select('*')
     .eq('id', id)
     .single();
 
   if (error) {
+    if (table === 'matches' && isMissingSchemaEntityError(error, 'matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return getMatch(id);
+    }
     console.error('Error fetching match:', error);
     return { data: null, error: new Error(error.message) };
   }
 
-  return { data, error: null };
+  return { data: normalizeMatchRow(data as DbMatchCompatRow), error: null };
 }
 
 export async function getTournamentMatches(
@@ -86,78 +199,105 @@ export async function getTournamentMatches(
     includeCompleted?: boolean;
   }
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
+  const table = await resolveMatchTable();
   let query = getSupabaseClient()
-    .from('matches')
+    .from(table)
     .select('*')
     .eq('tournament_id', tournamentId)
-    .order('round_index', { ascending: true })
-    .order('match_index', { ascending: true });
+    .order(table === 'tournament_matches' ? 'round' : 'round_index', { ascending: true })
+    .order(table === 'tournament_matches' ? 'match_no' : 'match_index', { ascending: true });
 
   if (options?.bracketType) {
-    query = query.eq('bracket_type', options.bracketType);
+    query = query.eq(table === 'tournament_matches' ? 'bracket' : 'bracket_type', options.bracketType);
   }
 
   if (options?.roundIndex !== undefined) {
-    query = query.eq('round_index', options.roundIndex);
+    query = query.eq(table === 'tournament_matches' ? 'round' : 'round_index', options.roundIndex);
   }
 
-  if (options?.groupIndex !== undefined) {
+  if (table !== 'tournament_matches' && options?.groupIndex !== undefined) {
     query = query.eq('group_index', options.groupIndex);
   }
 
-  if (options?.includeCompleted === false) {
+  if (table !== 'tournament_matches' && options?.includeCompleted === false) {
     query = query.is('completed_at', null);
   }
 
   const { data, error } = await query;
 
   if (error) {
+    if (table === 'matches' && isMissingSchemaEntityError(error, 'matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return getTournamentMatches(tournamentId, options);
+    }
     console.error('Error fetching matches:', error);
     return { data: [], error: new Error(error.message) };
   }
 
-  return { data: data || [], error: null };
+  let rows = ((data || []) as DbMatchCompatRow[]).map(normalizeMatchRow);
+  if (options?.groupIndex !== undefined) {
+    rows = rows.filter((row) => row.group_index === options.groupIndex);
+  }
+  if (options?.includeCompleted === false) {
+    rows = rows.filter((row) => row.completed_at === null);
+  }
+
+  return { data: rows, error: null };
 }
 
 export async function getMatchesByRobot(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
+  const table = await resolveMatchTable();
   const { data, error } = await getSupabaseClient()
-    .from('matches')
+    .from(table)
     .select('*')
     .eq('tournament_id', tournamentId)
-    .or(`robot_a_id.eq.${robotId},robot_b_id.eq.${robotId}`)
-    .order('round_index', { ascending: true });
+    .or(
+      table === 'tournament_matches'
+        ? `a_robot_id.eq.${robotId},b_robot_id.eq.${robotId}`
+        : `robot_a_id.eq.${robotId},robot_b_id.eq.${robotId}`
+    )
+    .order(table === 'tournament_matches' ? 'round' : 'round_index', { ascending: true });
 
   if (error) {
+    if (table === 'matches' && isMissingSchemaEntityError(error, 'matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return getMatchesByRobot(tournamentId, robotId);
+    }
     console.error('Error fetching robot matches:', error);
     return { data: [], error: new Error(error.message) };
   }
 
-  return { data: data || [], error: null };
+  return { data: ((data || []) as DbMatchCompatRow[]).map(normalizeMatchRow), error: null };
 }
 
 export async function getPendingMatches(
   tournamentId: string
 ): Promise<{ data: DbMatch[]; error: Error | null }> {
+  const table = await resolveMatchTable();
   const { data, error } = await getSupabaseClient()
-    .from('matches')
+    .from(table)
     .select('*')
     .eq('tournament_id', tournamentId)
-    .is('winner_id', null)
-    .eq('is_bye', false)
-    .not('robot_a_id', 'is', null)
-    .not('robot_b_id', 'is', null)
-    .order('round_index', { ascending: true })
-    .order('match_index', { ascending: true });
+    .order(table === 'tournament_matches' ? 'round' : 'round_index', { ascending: true })
+    .order(table === 'tournament_matches' ? 'match_no' : 'match_index', { ascending: true });
 
   if (error) {
+    if (table === 'matches' && isMissingSchemaEntityError(error, 'matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return getPendingMatches(tournamentId);
+    }
     console.error('Error fetching pending matches:', error);
     return { data: [], error: new Error(error.message) };
   }
 
-  return { data: data || [], error: null };
+  const rows = ((data || []) as DbMatchCompatRow[])
+    .map(normalizeMatchRow)
+    .filter((match) => !match.winner_id && !match.is_bye && !!match.robot_a_id && !!match.robot_b_id);
+
+  return { data: rows, error: null };
 }
 
 // =============================================
@@ -168,17 +308,22 @@ export async function updateMatch(
   id: string,
   data: DbMatchUpdate
 ): Promise<{ data: DbMatch | null; error: Error | null }> {
+  const table = await resolveMatchTable();
   try {
-    const match = await secureMutation<DbMatch>({
-      table: 'matches',
+    const match = await secureMutation<DbMatchCompatRow>({
+      table,
       operation: 'update',
-      data,
+      data: table === 'tournament_matches' ? toLegacyMatchUpdatePayload(data) : data,
       match: { id },
       single: true,
     });
-    return { data: match, error: null };
+    return { data: normalizeMatchRow(match), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'matches' && message.includes('matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return updateMatch(id, data);
+    }
     console.error('Error updating match:', message);
     return { data: null, error: new Error(message) };
   }
@@ -280,15 +425,20 @@ export async function resetMatch(
 export async function deleteMatch(
   id: string
 ): Promise<{ error: Error | null }> {
+  const table = await resolveMatchTable();
   try {
     await secureMutation<null>({
-      table: 'matches',
+      table,
       operation: 'delete',
       match: { id },
       returning: false,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'matches' && message.includes('matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return deleteMatch(id);
+    }
     console.error('Error deleting match:', message);
     return { error: new Error(message) };
   }
@@ -299,15 +449,20 @@ export async function deleteMatch(
 export async function deleteTournamentMatches(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
+  const table = await resolveMatchTable();
   try {
     await secureMutation<null>({
-      table: 'matches',
+      table,
       operation: 'delete',
       match: { tournament_id: tournamentId },
       returning: false,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'matches' && message.includes('matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return deleteTournamentMatches(tournamentId);
+    }
     console.error('Error deleting tournament matches:', message);
     return { error: new Error(message) };
   }
@@ -423,17 +578,22 @@ export async function getMatchStats(
   inProgress: number;
   error: Error | null;
 }> {
+  const table = await resolveMatchTable();
   const { data, error } = await getSupabaseClient()
-    .from('matches')
-    .select('winner_id, robot_a_id, robot_b_id, is_bye')
+    .from(table)
+    .select('*')
     .eq('tournament_id', tournamentId);
 
   if (error) {
+    if (table === 'matches' && isMissingSchemaEntityError(error, 'matches')) {
+      cachedMatchTable = 'tournament_matches';
+      return getMatchStats(tournamentId);
+    }
     console.error('Error fetching match stats:', error);
     return { total: 0, completed: 0, pending: 0, inProgress: 0, error: new Error(error.message) };
   }
 
-  const matches = data || [];
+  const matches = ((data || []) as DbMatchCompatRow[]).map(normalizeMatchRow);
   const total = matches.length;
   const completed = matches.filter((m: DbMatch) => m.winner_id !== null || m.is_bye).length;
   const pending = matches.filter(

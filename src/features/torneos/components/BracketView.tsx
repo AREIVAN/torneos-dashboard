@@ -447,7 +447,6 @@ export default function BracketView() {
     generate,
     clearView,
     setViewMode,
-    organizerUnlocked,
     unlockOrganizerMode,
     refreshOrganizerSession,
     setViewStyle,
@@ -467,12 +466,8 @@ export default function BracketView() {
       setTokenError(null);
       return;
     }
-
-    if (organizerUnlocked) {
-      setViewMode("organizer");
-      return;
-    }
-
+    setTokenValue("");
+    setTokenError(null);
     setShowTokenInput(true);
   };
 

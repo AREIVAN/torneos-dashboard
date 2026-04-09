@@ -28,6 +28,28 @@ function statusLabel(status: string) {
   return "Cancelado";
 }
 
+function parseBracketView(rawView: unknown): ViewState | null {
+  if (!rawView) return null;
+
+  const parsed =
+    typeof rawView === "string"
+      ? (() => {
+          try {
+            return JSON.parse(rawView) as unknown;
+          } catch {
+            return null;
+          }
+        })()
+      : rawView;
+
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const candidate = parsed as Partial<ViewState>;
+  return candidate.type === "single" || candidate.type === "groups" || candidate.type === "double"
+    ? (candidate as ViewState)
+    : null;
+}
+
 export default function TournamentDetailPage() {
   const params = useParams<{ id: string }>();
   const tournamentId = params.id;
@@ -55,6 +77,11 @@ export default function TournamentDetailPage() {
     }
     setLoading(false);
   }, [tournamentId]);
+
+  const parsedBracketView = useMemo(
+    () => parseBracketView(data?.bracket_data ?? null),
+    [data?.bracket_data]
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -88,19 +115,7 @@ export default function TournamentDetailPage() {
         {
           event: "*",
           schema: "public",
-          table: "matches",
-          filter: `tournament_id=eq.${tournamentId}`,
-        },
-        () => {
-          void loadTournament();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "standings",
+          table: "tournament_matches",
           filter: `tournament_id=eq.${tournamentId}`,
         },
         () => {
@@ -116,15 +131,15 @@ export default function TournamentDetailPage() {
 
   useEffect(() => {
     if (!data || autoSyncedRef.current) return;
-    if (data.matches.length > 0 || !data.bracket_data) return;
+    if (data.matches.length > 0 || !parsedBracketView) return;
 
     autoSyncedRef.current = true;
     void (async () => {
-      await syncTournamentMatches(data.id, data.bracket_data);
+      await syncTournamentMatches(data.id, parsedBracketView);
       await recalculateStandings(data.id);
       await loadTournament();
     })();
-  }, [data, loadTournament]);
+  }, [data, parsedBracketView, loadTournament]);
 
   const completedMatches = useMemo(
     () => data?.matches.filter((m) => m.winner_id || m.is_bye).length ?? 0,
@@ -189,7 +204,7 @@ export default function TournamentDetailPage() {
 
   const setCompleted = async () => {
     if (!data) return;
-    const view = (data.bracket_data as ViewState | null) || null;
+    const view = parsedBracketView;
     if (hasPendingThirdPlaceMatch(view)) {
       alert("Falta definir el partido por 3er puesto antes de finalizar el torneo.");
       return;
@@ -223,8 +238,8 @@ export default function TournamentDetailPage() {
   };
 
   const handleSyncFromBracket = async () => {
-    if (!data) return;
-    await syncTournamentMatches(data.id, data.bracket_data);
+    if (!data || !parsedBracketView) return;
+    await syncTournamentMatches(data.id, parsedBracketView);
     await recalculateStandings(data.id);
     await loadTournament();
   };
@@ -350,13 +365,13 @@ export default function TournamentDetailPage() {
             <FinalPlacementsPodium placements={data.standings} participants={data.participants} />
             <GroupStandingsTable standings={data.standings} participants={data.participants} />
 
-            {data.bracket_data ? (
+            {parsedBracketView ? (
               <div
                 className={`grid grid-cols-1 gap-4 items-start ${
                   data.status === "active" ? "lg:grid-cols-[1fr_300px]" : "lg:grid-cols-1"
                 }`}
               >
-                <SpectatorBracketView view={data.bracket_data} />
+                <SpectatorBracketView view={parsedBracketView} />
                 {data.status === "active" && (
                   <aside className="rounded-xl border border-brand-stroke/25 bg-brand-panel/40 overflow-hidden">
                     <div className="px-3 py-2 border-b border-brand-stroke/20 text-xs uppercase tracking-wide text-brand-muted">

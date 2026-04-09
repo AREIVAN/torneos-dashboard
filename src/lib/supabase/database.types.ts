@@ -11,9 +11,17 @@ export type TournamentFormat = 'single' | 'groups' | 'double';
 export type TournamentStatus = 'draft' | 'active' | 'completed' | 'cancelled';
 export type BracketType = 'winners' | 'losers' | 'groups' | 'grand_final' | 'single';
 
+export type ParticipantTableName = 'tournament_players' | 'tournament_participants';
+export type MatchTableName = 'tournament_matches' | 'matches';
+export type StandingTableName = 'standings';
+export type WritableTableName = 'tournaments' | ParticipantTableName | MatchTableName | StandingTableName;
+
 export interface DbTournament {
   id: string;
   name: string;
+  public_slug?: string;
+  spectator_token_hash?: string;
+  organizer_key_hash?: string;
   category: string | null;
   venue: string | null;
   date: string | null; // ISO date string
@@ -31,6 +39,9 @@ export interface DbTournament {
 
 export interface DbTournamentInsert {
   name: string;
+  public_slug?: string;
+  spectator_token_hash?: string;
+  organizer_key_hash?: string;
   category?: string | null;
   venue?: string | null;
   date?: string | null;
@@ -46,6 +57,9 @@ export interface DbTournamentInsert {
 
 export interface DbTournamentUpdate {
   name?: string;
+  public_slug?: string;
+  spectator_token_hash?: string;
+  organizer_key_hash?: string;
   category?: string | null;
   venue?: string | null;
   date?: string | null;
@@ -77,6 +91,17 @@ export interface DbParticipantInsert {
   robot_id: string;
   robot_data: ParticipantRobotData;
   seed?: number | null;
+}
+
+export interface DbParticipantCompatRow {
+  id: string;
+  tournament_id: string;
+  robot_id: string;
+  robot_data?: ParticipantRobotData | null;
+  compact?: ParticipantRobotData | null;
+  team?: string | null;
+  seed: number | null;
+  created_at: string;
 }
 
 // Robot data snapshot at registration time
@@ -144,6 +169,41 @@ export interface DbMatchUpdate {
   winner_id?: string | null;
   is_bye?: boolean;
   completed_at?: string | null;
+}
+
+export interface DbMatchCompatRow {
+  id: string;
+  tournament_id: string;
+  bracket_type?: BracketType;
+  bracket?: string;
+  round_index?: number;
+  round?: number;
+  match_index?: number;
+  match_no?: number;
+  group_index?: number | null;
+  robot_a_id?: string | null;
+  a_robot_id?: string | null;
+  robot_b_id?: string | null;
+  b_robot_id?: string | null;
+  wins_a?: number;
+  wa?: number;
+  wins_b?: number;
+  wb?: number;
+  winner_id?: string | null;
+  winner_robot_id?: string | null;
+  is_bye?: boolean;
+  is_reset?: boolean;
+  scheduled_at?: string | null;
+  completed_at?: string | null;
+  meta?: {
+    is_bye?: boolean;
+    is_reset?: boolean;
+    group_index?: number | null;
+    scheduled_at?: string | null;
+    completed_at?: string | null;
+  } | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // =============================================
@@ -227,4 +287,19 @@ export interface RealtimeTournamentPayload {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
   new: DbTournament;
   old: DbTournament | null;
+}
+
+export interface DbTournamentCompatRow extends Omit<DbTournament, 'bracket_data' | 'date' | 'size' | 'groups_count' | 'advance_per_group' | 'status'> {
+  bracket_data?: BracketData | null;
+  snapshot?: BracketData | null;
+  date?: string | null;
+  event_date?: string | null;
+  size?: number | null;
+  n?: number | null;
+  groups_count?: number | null;
+  groups?: number | null;
+  advance_per_group?: number | null;
+  adv?: number | null;
+  status?: TournamentStatus | null;
+  state?: TournamentStatus | null;
 }

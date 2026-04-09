@@ -4,9 +4,10 @@ import {
   ORGANIZER_SESSION_COOKIE,
   verifyOrganizerSessionToken,
 } from '@/features/torneos/lib/organizerSession.server';
+import type { WritableTableName } from '@/lib/supabase/database.types';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-type WritableTable = 'tournaments' | 'tournament_participants' | 'matches' | 'standings';
+type WritableTable = WritableTableName;
 type MutationOperation = 'insert' | 'update' | 'delete' | 'upsert';
 
 interface SecureWriteBody {
@@ -27,7 +28,14 @@ interface SupabaseMutationError {
   hint?: string;
 }
 
-const ALLOWED_TABLES: WritableTable[] = ['tournaments', 'tournament_participants', 'matches', 'standings'];
+const ALLOWED_TABLES: WritableTable[] = [
+  'tournaments',
+  'tournament_participants',
+  'tournament_players',
+  'matches',
+  'tournament_matches',
+  'standings',
+];
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);

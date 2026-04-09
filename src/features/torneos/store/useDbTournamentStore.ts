@@ -10,8 +10,16 @@ import {
   normalizeRobotCategory,
   ROBOT_CATEGORY_MINI_SUMO_AUTONOMO_PRO,
 } from '@/lib/categoryNormalization';
-import type { Player, Tournament, ViewState, Bracket } from '../lib/types';
-import type { DbTournament, DbParticipant } from '@/lib/supabase/database.types';
+import type {
+  Player,
+  Tournament,
+  ViewState,
+  Bracket,
+  Match,
+  Slot,
+  DoubleStructure,
+} from '../lib/types';
+import type { DbTournament, DbParticipant, DbMatch } from '@/lib/supabase/database.types';
 import {
   buildSingleBracketBO3,
   buildDoubleStructure,
@@ -63,15 +71,492 @@ function clearStandaloneMatch(match: Bracket['rounds'][number][number]) {
 async function syncTournamentProgress(tournamentId: string, view: ViewState) {
   const matchesResult = await syncTournamentMatches(tournamentId, view);
   if (matchesResult.error) {
-    return { error: matchesResult.error };
+    return { error: matchesResult.error, standingsWarning: null };
   }
 
   const standingsResult = await recalculateStandings(tournamentId);
   if (standingsResult.error) {
-    return { error: standingsResult.error };
+    console.warn('No se pudo recalcular standings, pero los matches quedaron sincronizados.', standingsResult.error);
+    return { error: null, standingsWarning: standingsResult.error };
   }
 
-  return { error: null };
+  return { error: null, standingsWarning: null };
+}
+
+function parseRawViewState(value: unknown): ViewState | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as ViewState;
+      return typeof parsed === 'object' && parsed ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === 'object' ? (value as ViewState) : null;
+}
+
+function isBracket(value: unknown): value is Bracket {
+  if (!value || typeof value !== 'object') return false;
+  return Array.isArray((value as Bracket).rounds);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
+}
+
+function toSafeSlot(value: unknown): Slot {
+  if (!isRecord(value)) {
+    return toUnknownSlot();
+  }
+
+  const rid = typeof value.rid === 'string' ? value.rid : '';
+  const id = typeof value.id === 'string' ? value.id : rid;
+  const name = typeof value.name === 'string' && value.name.trim().length > 0 ? value.name : id || 'TBD';
+  const bye =
+    value.bye === true ||
+    String(id).toUpperCase() === 'BYE' ||
+    String(name).toUpperCase() === 'BYE';
+
+  return {
+    id,
+    name,
+    rid: rid || id,
+    team: typeof value.team === 'string' ? value.team : '',
+    compact: null,
+    bye,
+  };
+}
+
+function toSafeMatch(value: unknown, fallbackId: string): Match | null {
+  if (!isRecord(value)) return null;
+
+  const winner = value.winner === 'a' || value.winner === 'b' ? value.winner : null;
+  const wa = typeof value.wa === 'number' && Number.isFinite(value.wa) ? Math.max(0, Math.floor(value.wa)) : 0;
+  const wb = typeof value.wb === 'number' && Number.isFinite(value.wb) ? Math.max(0, Math.floor(value.wb)) : 0;
+
+  return {
+    id: typeof value.id === 'string' && value.id.length > 0 ? value.id : fallbackId,
+    a: toSafeSlot(value.a),
+    b: toSafeSlot(value.b),
+    wa,
+    wb,
+    winner,
+  };
+}
+
+function toSafeBracket(value: unknown, fallbackType: Bracket['type']): Bracket | null {
+  if (!isBracket(value)) return null;
+
+  const rounds = value.rounds
+    .map((round, ri) => {
+      if (!Array.isArray(round)) return [] as Match[];
+      return round
+        .map((match, mi) => toSafeMatch(match, `R${ri + 1}M${mi + 1}`))
+        .filter((match): match is Match => Boolean(match));
+    })
+    .filter((round) => round.length > 0);
+
+  if (rounds.length === 0) return null;
+
+  const type =
+    value.type === 'single' || value.type === 'losers' || value.type === 'grandFinal'
+      ? value.type
+      : fallbackType;
+  const size =
+    typeof value.size === 'number' && Number.isFinite(value.size) && value.size >= 2
+      ? Math.floor(value.size)
+      : Math.max(2, rounds[0].length * 2);
+
+  return {
+    type,
+    size,
+    rounds,
+  };
+}
+
+function toSafeDoubleStructure(value: unknown): DoubleStructure | null {
+  if (!isRecord(value)) return null;
+
+  const winners = toSafeBracket(value.winners, 'single');
+  const losers = toSafeBracket(value.losers, 'losers');
+  const grandFinal = Array.isArray(value.grandFinal)
+    ? value.grandFinal
+        .map((match, index) => toSafeMatch(match, `GF${index + 1}`))
+        .filter((match): match is Match => Boolean(match))
+    : [];
+
+  if (!winners && !losers && grandFinal.length === 0) return null;
+
+  return {
+    winners: winners || emptyBracket('single'),
+    losers: losers || emptyBracket('losers'),
+    grandFinal,
+    gfReset: Boolean(value.gfReset) || grandFinal.length > 1,
+    tournamentResolved: Boolean(value.tournamentResolved),
+    champion:
+      typeof value.champion === 'string' && value.champion.length > 0 ? value.champion : null,
+  };
+}
+
+function emptyBracket(type: Bracket['type']): Bracket {
+  return {
+    type,
+    size: 2,
+    rounds: [],
+  };
+}
+
+function toUnknownSlot(): Slot {
+  return { id: '', name: 'TBD', rid: '', team: '', compact: null, bye: false };
+}
+
+function toByeSlot(): Slot {
+  return { id: 'BYE', name: 'BYE', rid: '', team: '', compact: null, bye: true };
+}
+
+function toMatchSlot(
+  robotId: string | null,
+  isBye: boolean,
+  playersById: Map<string, Player>
+): Slot {
+  if (isBye) return toByeSlot();
+  if (!robotId) return toUnknownSlot();
+
+  const player = playersById.get(robotId);
+  if (!player) {
+    return {
+      id: robotId,
+      name: robotId,
+      rid: robotId,
+      team: '',
+      compact: null,
+      bye: false,
+    };
+  }
+
+  return {
+    id: player.i,
+    name: player.n || player.i,
+    rid: player.i,
+    team: player.t || '',
+    compact: player,
+    bye: false,
+  };
+}
+
+function toViewMatch(match: DbMatch, playersById: Map<string, Player>): Match {
+  const isByeA = Boolean(match.is_bye && !match.robot_a_id);
+  const isByeB = Boolean(match.is_bye && !match.robot_b_id);
+  const a = toMatchSlot(match.robot_a_id, isByeA, playersById);
+  const b = toMatchSlot(match.robot_b_id, isByeB, playersById);
+  const winner: 'a' | 'b' | null =
+    match.winner_id && match.winner_id === a.id
+      ? 'a'
+      : match.winner_id && match.winner_id === b.id
+        ? 'b'
+        : null;
+
+  return {
+    id: match.id,
+    a,
+    b,
+    wa: match.wins_a,
+    wb: match.wins_b,
+    winner,
+  };
+}
+
+function buildSingleViewFromMatches(
+  matches: DbMatch[],
+  playersById: Map<string, Player>
+): Pick<ViewState, 'bracket' | 'thirdPlaceMatch'> | null {
+  const singleRows = matches.filter((row) => row.bracket_type === 'single');
+  if (singleRows.length === 0) return null;
+
+  const rounds = new Map<number, DbMatch[]>();
+  singleRows.forEach((row) => {
+    const current = rounds.get(row.round_index);
+    if (current) {
+      current.push(row);
+      return;
+    }
+    rounds.set(row.round_index, [row]);
+  });
+
+  const roundIndexes = Array.from(rounds.keys()).sort((a, b) => a - b);
+  const firstRoundIndex = roundIndexes[0];
+  if (firstRoundIndex === undefined) return null;
+
+  const firstRoundCount = (rounds.get(firstRoundIndex) || []).length;
+  const expectedMainRounds = Math.max(1, Math.round(Math.log2(Math.max(2, firstRoundCount * 2))));
+  const mainRoundIndexes = new Set(roundIndexes.slice(0, expectedMainRounds));
+  const extraRoundIndexes = roundIndexes.filter((index) => !mainRoundIndexes.has(index));
+  const thirdPlaceRoundIndex = extraRoundIndexes[0];
+
+  const mainRounds = Array.from(mainRoundIndexes)
+    .sort((a, b) => a - b)
+    .map((roundIndex) => {
+      const rows = rounds.get(roundIndex) || [];
+      return rows
+        .slice()
+        .sort((a, b) => a.match_index - b.match_index)
+        .map((row) => toViewMatch(row, playersById));
+    })
+    .filter((round) => round.length > 0);
+
+  if (mainRounds.length === 0) return null;
+
+  const thirdPlaceRows =
+    thirdPlaceRoundIndex !== undefined ? (rounds.get(thirdPlaceRoundIndex) || []) : [];
+  const thirdPlaceMatch = thirdPlaceRows
+    .slice()
+    .sort((a, b) => a.match_index - b.match_index)
+    .map((row) => toViewMatch(row, playersById))[0];
+
+  const size = Math.max(2, mainRounds[0].length * 2);
+  return {
+    bracket: {
+      type: 'single',
+      size,
+      rounds: mainRounds,
+    },
+    thirdPlaceMatch,
+  };
+}
+
+function buildBracketFromRows(
+  rows: DbMatch[],
+  playersById: Map<string, Player>,
+  type: Bracket['type']
+): Bracket | null {
+  if (rows.length === 0) return null;
+
+  const rounds = new Map<number, DbMatch[]>();
+  rows.forEach((row) => {
+    const current = rounds.get(row.round_index);
+    if (current) {
+      current.push(row);
+      return;
+    }
+    rounds.set(row.round_index, [row]);
+  });
+
+  const roundIndexes = Array.from(rounds.keys()).sort((a, b) => a - b);
+  const bracketRounds = roundIndexes
+    .map((roundIndex) => {
+      const roundRows = rounds.get(roundIndex) || [];
+      return roundRows
+        .slice()
+        .sort((a, b) => a.match_index - b.match_index)
+        .map((row) => toViewMatch(row, playersById));
+    })
+    .filter((round) => round.length > 0);
+
+  if (bracketRounds.length === 0) return null;
+
+  return {
+    type,
+    size: Math.max(2, bracketRounds[0].length * 2),
+    rounds: bracketRounds,
+  };
+}
+
+function buildGroupsViewFromMatches(
+  matches: DbMatch[],
+  playersById: Map<string, Player>
+): Pick<ViewState, 'groups' | 'qualifiers' | 'finalBracket' | 'finalThirdPlaceMatch'> | null {
+  const recoveredSingle = buildSingleViewFromMatches(matches, playersById);
+  if (!recoveredSingle?.bracket) return null;
+
+  return {
+    groups: [],
+    qualifiers: [],
+    finalBracket: recoveredSingle.bracket,
+    finalThirdPlaceMatch: recoveredSingle.thirdPlaceMatch,
+  };
+}
+
+function buildDoubleViewFromMatches(
+  matches: DbMatch[],
+  playersById: Map<string, Player>
+): Pick<ViewState, 'dbl' | 'tournamentResolved' | 'champion'> | null {
+  const winnersRows = matches.filter((row) => row.bracket_type === 'winners');
+  const losersRows = matches.filter((row) => row.bracket_type === 'losers');
+  const grandFinalRows = matches
+    .filter((row) => row.bracket_type === 'grand_final')
+    .slice()
+    .sort((a, b) => a.match_index - b.match_index);
+
+  if (winnersRows.length === 0 && losersRows.length === 0 && grandFinalRows.length === 0) {
+    return null;
+  }
+
+  const winners = buildBracketFromRows(winnersRows, playersById, 'single') || emptyBracket('single');
+  const losers = buildBracketFromRows(losersRows, playersById, 'losers') || emptyBracket('losers');
+  const grandFinal = grandFinalRows.map((row) => toViewMatch(row, playersById));
+
+  return {
+    dbl: {
+      winners,
+      losers,
+      grandFinal,
+      gfReset: grandFinalRows.some((row) => row.is_reset) || grandFinal.length > 1,
+      tournamentResolved: false,
+      champion: null,
+    },
+    tournamentResolved: false,
+    champion: null,
+  };
+}
+
+function getCompatibleView(
+  tournamentFormat: Tournament['format'],
+  rawView: unknown,
+  matches: DbMatch[],
+  players: Player[]
+): ViewState | null {
+  const parsedView = parseRawViewState(rawView);
+  const playersById = new Map(players.map((player) => [player.i, player]));
+
+  if (parsedView?.type === 'single') {
+    const safeSnapshotBracket = toSafeBracket(parsedView.bracket, 'single');
+    if (safeSnapshotBracket) {
+      return {
+        ...parsedView,
+        type: 'single',
+        bracket: safeSnapshotBracket,
+        thirdPlaceMatch: toSafeMatch(parsedView.thirdPlaceMatch, 'single-third-place') || undefined,
+      };
+    }
+
+    const recovered = buildSingleViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredBracket = toSafeBracket(recovered.bracket, 'single');
+    if (!safeRecoveredBracket) return null;
+
+    const safeThirdPlace =
+      toSafeMatch(parsedView.thirdPlaceMatch, 'single-third-place') ||
+      toSafeMatch(recovered.thirdPlaceMatch, 'single-third-place');
+
+    return {
+      ...parsedView,
+      type: 'single',
+      bracket: safeRecoveredBracket,
+      thirdPlaceMatch: safeThirdPlace || undefined,
+    };
+  }
+
+  if (parsedView?.type === 'groups') {
+    const safeSnapshotFinalBracket = toSafeBracket(parsedView.finalBracket, 'single');
+    if (safeSnapshotFinalBracket) {
+      return {
+        ...parsedView,
+        type: 'groups',
+        groups: parsedView.groups ?? [],
+        qualifiers: parsedView.qualifiers ?? [],
+        finalBracket: safeSnapshotFinalBracket,
+        finalThirdPlaceMatch:
+          toSafeMatch(parsedView.finalThirdPlaceMatch, 'groups-third-place') || undefined,
+      };
+    }
+
+    const recovered = buildGroupsViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredFinalBracket = toSafeBracket(recovered.finalBracket, 'single');
+    if (!safeRecoveredFinalBracket) return null;
+
+    const safeThirdPlace =
+      toSafeMatch(parsedView.finalThirdPlaceMatch, 'groups-third-place') ||
+      toSafeMatch(recovered.finalThirdPlaceMatch, 'groups-third-place');
+
+    return {
+      ...parsedView,
+      type: 'groups',
+      groups: parsedView.groups ?? recovered.groups,
+      qualifiers: parsedView.qualifiers ?? recovered.qualifiers,
+      finalBracket: safeRecoveredFinalBracket,
+      finalThirdPlaceMatch: safeThirdPlace || undefined,
+    };
+  }
+
+  if (parsedView?.type === 'double') {
+    const safeSnapshotDouble = toSafeDoubleStructure(parsedView.dbl);
+    if (safeSnapshotDouble) {
+      return {
+        ...parsedView,
+        type: 'double',
+        dbl: safeSnapshotDouble,
+        tournamentResolved:
+          parsedView.tournamentResolved ?? safeSnapshotDouble.tournamentResolved,
+        champion: parsedView.champion ?? safeSnapshotDouble.champion,
+      };
+    }
+
+    const recovered = buildDoubleViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredDouble = toSafeDoubleStructure(recovered.dbl);
+    if (!safeRecoveredDouble) return null;
+
+    return {
+      ...parsedView,
+      type: 'double',
+      dbl: safeRecoveredDouble,
+      tournamentResolved: parsedView.tournamentResolved ?? recovered.tournamentResolved,
+      champion: parsedView.champion ?? recovered.champion,
+    };
+  }
+
+  if (!parsedView && tournamentFormat === 'single') {
+    const recovered = buildSingleViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredBracket = toSafeBracket(recovered.bracket, 'single');
+    if (!safeRecoveredBracket) return null;
+
+    return {
+      type: 'single',
+      bracket: safeRecoveredBracket,
+      thirdPlaceMatch: toSafeMatch(recovered.thirdPlaceMatch, 'single-third-place') || undefined,
+    };
+  }
+
+  if (!parsedView && tournamentFormat === 'groups') {
+    const recovered = buildGroupsViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredFinalBracket = toSafeBracket(recovered.finalBracket, 'single');
+    if (!safeRecoveredFinalBracket) return null;
+
+    return {
+      type: 'groups',
+      groups: recovered.groups,
+      qualifiers: recovered.qualifiers,
+      finalBracket: safeRecoveredFinalBracket,
+      finalThirdPlaceMatch:
+        toSafeMatch(recovered.finalThirdPlaceMatch, 'groups-third-place') || undefined,
+    };
+  }
+
+  if (!parsedView && tournamentFormat === 'double') {
+    const recovered = buildDoubleViewFromMatches(matches, playersById);
+    if (!recovered) return null;
+
+    const safeRecoveredDouble = toSafeDoubleStructure(recovered.dbl);
+    if (!safeRecoveredDouble) return null;
+
+    return {
+      type: 'double',
+      dbl: safeRecoveredDouble,
+      tournamentResolved: recovered.tournamentResolved,
+      champion: recovered.champion,
+    };
+  }
+
+  return null;
 }
 
 // =============================================
@@ -216,7 +701,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     }
 
     const nextMode = get().organizerUnlocked ? 'organizer' : 'competitor';
-    set({ viewMode: nextMode, viewStyle: 'columns' });
+    set({ viewMode: nextMode, viewStyle: 'columns', syncError: null });
 
     let view: ViewState;
 
@@ -257,8 +742,17 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
     if (tournamentId) {
       set({ isSyncing: true });
       const result = await saveBracketData(tournamentId, view);
+      if (result.error) {
+        set({
+          isSyncing: false,
+          lastSyncedAt: null,
+          syncError: result.error.message,
+        });
+        return;
+      }
       
       // Initialize standings for participants
+      let standingsInitWarning: Error | null = null;
       if (tournament.format === 'groups') {
         // For groups format, assign group indices
         const groupAssignments = new Map<string, number>();
@@ -267,26 +761,40 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
             groupAssignments.set(player.i, groupIndex);
           });
         });
-        await initializeStandings(
+        const standingsInitResult = await initializeStandings(
           tournamentId,
           players.map((p) => p.i),
           groupAssignments
         );
+        standingsInitWarning = standingsInitResult.error;
       } else {
-        await initializeStandings(
+        const standingsInitResult = await initializeStandings(
           tournamentId,
           players.map((p) => p.i)
         );
+        standingsInitWarning = standingsInitResult.error;
+      }
+
+      if (standingsInitWarning) {
+        console.warn('No se pudo inicializar standings, continuando con guardado de llaves y matches.', standingsInitWarning);
       }
 
       // Update status to active
-      await apiUpdateTournament(tournamentId, { status: 'active' });
+      const statusResult = await apiUpdateTournament(tournamentId, { status: 'active' });
+      if (statusResult.error) {
+        set({
+          isSyncing: false,
+          lastSyncedAt: null,
+          syncError: statusResult.error.message,
+        });
+        return;
+      }
       const syncProgressResult = await syncTournamentProgress(tournamentId, view);
 
       set({
         isSyncing: false,
-        lastSyncedAt: result.error || syncProgressResult.error ? null : new Date(),
-        syncError: result.error?.message || syncProgressResult.error?.message || null,
+        lastSyncedAt: syncProgressResult.error ? null : new Date(),
+        syncError: syncProgressResult.error?.message || null,
       });
     }
   },
@@ -310,9 +818,9 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
 
   refreshOrganizerSession: async () => {
     const ok = await hasOrganizerSession();
-    set((state) => ({
+    set(() => ({
       organizerUnlocked: ok,
-      viewMode: ok ? state.viewMode : 'competitor',
+      viewMode: ok ? 'organizer' : 'competitor',
     }));
     return ok;
   },
@@ -549,6 +1057,20 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
       return null;
     }
 
+    const hasSession = await hasOrganizerSession();
+    if (!hasSession) {
+      set({
+        organizerUnlocked: false,
+        viewMode: 'competitor',
+        syncError: 'Necesitas token de organizador para crear el torneo.',
+      });
+      return null;
+    }
+
+    if (!get().organizerUnlocked) {
+      set({ organizerUnlocked: true });
+    }
+
     set({ isSyncing: true, syncError: null });
 
     try {
@@ -578,7 +1100,18 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
           seed: index + 1,
         }));
 
-        await addParticipants(dbTournament.id, participantData);
+        const participantsResult = await addParticipants(dbTournament.id, participantData);
+        if (
+          participantsResult.errors.length > 0 ||
+          participantsResult.data.length !== participantData.length
+        ) {
+          const firstError = participantsResult.errors[0];
+          set({
+            isSyncing: false,
+            syncError: firstError?.message || 'Error creating tournament participants',
+          });
+          return null;
+        }
       }
 
       set({
@@ -628,8 +1161,13 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
         };
       });
 
-      // Load bracket data
-      const view = data.bracket_data as ViewState | null;
+      // Load bracket data (snapshot has priority, with fallback from persisted matches)
+      const view = getCompatibleView(
+        tournament.format,
+        data.bracket_data as ViewState | null,
+        data.matches,
+        players
+      );
 
       set({
         tournamentId: id,

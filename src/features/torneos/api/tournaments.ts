@@ -6,8 +6,12 @@
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { categoriesMatch, normalizeRobotCategory } from '@/lib/categoryNormalization';
 import { SecureMutationError, secureMutation } from './secureMutation';
+import { getTournamentMatches } from './matches';
+import { getParticipants } from './participants';
+import { getTournamentStandings } from './standings';
 import type {
   DbTournament,
+  DbTournamentCompatRow,
   DbTournamentInsert,
   DbTournamentUpdate,
   TournamentWithParticipants,
@@ -37,16 +41,236 @@ function withoutField<T extends object, K extends keyof T>(obj: T, field: K): Om
   return copy as Omit<T, K>;
 }
 
-const TOURNAMENT_SCHEMA_FALLBACK_COLUMNS = ['advance_per_group', 'date'] as const;
+const TOURNAMENT_SCHEMA_FALLBACK_COLUMNS = [
+  'advance_per_group',
+  'bracket_data',
+  'snapshot',
+  'date',
+  'groups_count',
+  'size',
+  'status',
+  'state',
+  'public_slug',
+  'spectator_token_hash',
+  'organizer_key_hash',
+] as const;
+
+const TOURNAMENT_MAX_INSERT_RETRIES = 3;
 
 type TournamentMutationOperation = 'insert' | 'update';
+
+function normalizeSlugInput(value: string) {
+  const normalized = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+  return normalized.slice(0, 48) || 'torneo';
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function randomHex(byteLength: number) {
+  const bytes = new Uint8Array(byteLength);
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+    return bytesToHex(bytes);
+  }
+
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytesToHex(bytes);
+}
+
+function buildPublicSlug(name: string) {
+  return `${normalizeSlugInput(name)}-${randomHex(3)}`;
+}
+
+async function sha256Hex(input: string) {
+  if (typeof globalThis.crypto === 'undefined' || typeof globalThis.crypto.subtle?.digest !== 'function') {
+    // Fallback for environments without Web Crypto API.
+    return randomHex(32);
+  }
+
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return bytesToHex(new Uint8Array(digest));
+}
+
+async function ensureTournamentRequiredFields(data: DbTournamentInsert) {
+  const enriched = { ...data } as DbTournamentInsert & {
+    public_slug: string;
+    spectator_token_hash: string;
+    organizer_key_hash: string;
+  };
+  const current = enriched as unknown as Record<string, unknown>;
+
+  const hasPublicSlug = typeof current.public_slug === 'string' && current.public_slug.trim().length > 0;
+  if (!hasPublicSlug) {
+    enriched.public_slug = buildPublicSlug(data.name);
+  }
+
+  const hasSpectatorTokenHash =
+    typeof current.spectator_token_hash === 'string' && current.spectator_token_hash.trim().length > 0;
+  if (!hasSpectatorTokenHash) {
+    enriched.spectator_token_hash = `sha256:${await sha256Hex(randomHex(32))}`;
+  }
+
+  const hasOrganizerKeyHash =
+    typeof current.organizer_key_hash === 'string' && current.organizer_key_hash.trim().length > 0;
+  if (!hasOrganizerKeyHash) {
+    enriched.organizer_key_hash = `sha256:${await sha256Hex(randomHex(32))}`;
+  }
+
+  return enriched as DbTournamentInsert;
+}
+
+function withRegeneratedPublicSlug(data: DbTournamentInsert) {
+  const payload = { ...data } as DbTournamentInsert & { public_slug?: string };
+  payload.public_slug = buildPublicSlug(data.name);
+  return payload;
+}
+
+function isDuplicatePublicSlugError(error: TournamentMutationError | null) {
+  if (!error) {
+    return false;
+  }
+
+  const message = `${error.message} ${error.details || ''}`.toLowerCase();
+  return error.code === '23505' && message.includes('public_slug');
+}
+
+function withLegacyTournamentSizeField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'size')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'n')) {
+      legacyCompatibleData.n = legacyCompatibleData.size;
+    }
+    delete legacyCompatibleData.size;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withLegacyTournamentStatusField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'status')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'state')) {
+      legacyCompatibleData.state = legacyCompatibleData.status;
+    }
+    delete legacyCompatibleData.status;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withLegacyTournamentDateField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'date')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'event_date')) {
+      legacyCompatibleData.event_date = legacyCompatibleData.date;
+    }
+    delete legacyCompatibleData.date;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withLegacyTournamentGroupsField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'groups_count')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'groups')) {
+      legacyCompatibleData.groups = legacyCompatibleData.groups_count;
+    }
+    delete legacyCompatibleData.groups_count;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withLegacyTournamentAdvanceField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'advance_per_group')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'adv')) {
+      legacyCompatibleData.adv = legacyCompatibleData.advance_per_group;
+    }
+    delete legacyCompatibleData.advance_per_group;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withLegacyTournamentBracketField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const legacyCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'bracket_data')) {
+    if (!Object.prototype.hasOwnProperty.call(legacyCompatibleData, 'snapshot')) {
+      legacyCompatibleData.snapshot = legacyCompatibleData.bracket_data;
+    }
+    delete legacyCompatibleData.bracket_data;
+  }
+
+  return legacyCompatibleData as T;
+}
+
+function withModernTournamentBracketField<T extends DbTournamentInsert | DbTournamentUpdate>(
+  data: T
+): T {
+  const modernCompatibleData = { ...data } as Record<string, unknown>;
+
+  if (Object.prototype.hasOwnProperty.call(modernCompatibleData, 'snapshot')) {
+    if (!Object.prototype.hasOwnProperty.call(modernCompatibleData, 'bracket_data')) {
+      modernCompatibleData.bracket_data = modernCompatibleData.snapshot;
+    }
+    delete modernCompatibleData.snapshot;
+  }
+
+  return modernCompatibleData as T;
+}
+
+function normalizeTournamentRow(row: DbTournamentCompatRow | null): DbTournament | null {
+  if (!row) return null;
+
+  return {
+    ...(row as DbTournament),
+    date: row.date ?? row.event_date ?? null,
+    size: row.size ?? row.n ?? 0,
+    groups_count: row.groups_count ?? row.groups ?? null,
+    advance_per_group: row.advance_per_group ?? row.adv ?? null,
+    status: row.status ?? row.state ?? 'draft',
+    bracket_data: row.bracket_data ?? row.snapshot ?? null,
+  };
+}
 
 async function mutateTournamentWithSchemaFallback(
   operation: TournamentMutationOperation,
   data: DbTournamentInsert | DbTournamentUpdate,
   id?: string
 ): Promise<{ data: DbTournament | null; error: TournamentMutationError | null }> {
-  let mutationData = data;
+  let mutationData = withLegacyTournamentBracketField(data);
   let tournament: DbTournament | null = null;
   let error: TournamentMutationError | null = null;
   const omittedColumns: string[] = [];
@@ -55,13 +279,15 @@ async function mutateTournamentWithSchemaFallback(
     const match = operation === 'update' && id ? { id } : undefined;
 
     try {
-      tournament = await secureMutation<DbTournament>({
-        table: 'tournaments',
-        operation,
-        data: mutationData,
-        match,
-        single: true,
-      });
+      tournament = normalizeTournamentRow(
+        await secureMutation<DbTournamentCompatRow>({
+          table: 'tournaments',
+          operation,
+          data: mutationData,
+          match,
+          single: true,
+        })
+      );
       error = null;
       break;
     } catch (err) {
@@ -88,11 +314,55 @@ async function mutateTournamentWithSchemaFallback(
       break;
     }
 
-    omittedColumns.push(missingColumn);
-    console.warn(
-      `Tournaments ${operation} fallback: retrying without '${missingColumn}' due to schema cache drift.`
-    );
-    mutationData = withoutField(mutationData, missingColumn as keyof typeof mutationData);
+    if (missingColumn === 'size') {
+      omittedColumns.push('size->n');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'n' field because 'size' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentSizeField(mutationData);
+    } else if (missingColumn === 'status') {
+      omittedColumns.push('status->state');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'state' field because 'status' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentStatusField(mutationData);
+    } else if (missingColumn === 'date') {
+      omittedColumns.push('date->event_date');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'event_date' field because 'date' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentDateField(mutationData);
+    } else if (missingColumn === 'groups_count') {
+      omittedColumns.push('groups_count->groups');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'groups' field because 'groups_count' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentGroupsField(mutationData);
+    } else if (missingColumn === 'advance_per_group') {
+      omittedColumns.push('advance_per_group->adv');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'adv' field because 'advance_per_group' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentAdvanceField(mutationData);
+    } else if (missingColumn === 'bracket_data') {
+      omittedColumns.push('bracket_data->snapshot');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with legacy 'snapshot' field because 'bracket_data' is missing in schema cache.`
+      );
+      mutationData = withLegacyTournamentBracketField(mutationData);
+    } else if (missingColumn === 'snapshot') {
+      omittedColumns.push('snapshot->bracket_data');
+      console.warn(
+        `Tournaments ${operation} fallback: retrying with modern 'bracket_data' field because 'snapshot' is missing in schema cache.`
+      );
+      mutationData = withModernTournamentBracketField(mutationData);
+    } else {
+      omittedColumns.push(missingColumn);
+      console.warn(
+        `Tournaments ${operation} fallback: retrying without '${missingColumn}' due to schema cache drift.`
+      );
+      mutationData = withoutField(mutationData, missingColumn as keyof typeof mutationData);
+    }
   }
 
   if (error && omittedColumns.length > 0) {
@@ -111,27 +381,36 @@ async function mutateTournamentWithSchemaFallback(
 export async function createTournament(
   data: DbTournamentInsert
 ): Promise<{ data: DbTournament | null; error: Error | null }> {
-  const normalizedData: DbTournamentInsert = {
+  const normalizedData = await ensureTournamentRequiredFields({
     ...data,
     category: normalizeRobotCategory(data.category),
-  };
+  });
 
-  const { data: tournament, error } = await mutateTournamentWithSchemaFallback(
-    'insert',
-    normalizedData
-  );
+  let mutationData: DbTournamentInsert = normalizedData;
+  let lastError: TournamentMutationError | null = null;
 
-  if (error) {
-    console.error('Error creating tournament:', {
-      code: error.code ?? null,
-      message: error.message,
-      details: error.details ?? null,
-      hint: error.hint ?? null,
-    });
-    return { data: null, error: new Error(error.message) };
+  for (let attempt = 0; attempt < TOURNAMENT_MAX_INSERT_RETRIES; attempt += 1) {
+    const { data: tournament, error } = await mutateTournamentWithSchemaFallback('insert', mutationData);
+    if (!error) {
+      return { data: tournament, error: null };
+    }
+
+    lastError = error;
+    if (!isDuplicatePublicSlugError(error) || attempt === TOURNAMENT_MAX_INSERT_RETRIES - 1) {
+      break;
+    }
+
+    mutationData = withRegeneratedPublicSlug(mutationData);
   }
 
-  return { data: tournament, error: null };
+  console.error('Error creating tournament:', {
+    code: lastError?.code ?? null,
+    message: lastError?.message || 'Unknown error',
+    details: lastError?.details ?? null,
+    hint: lastError?.hint ?? null,
+  });
+
+  return { data: null, error: new Error(lastError?.message || 'Unknown error') };
 }
 
 // =============================================
@@ -152,7 +431,7 @@ export async function getTournament(
     return { data: null, error: new Error(error.message) };
   }
 
-  return { data: tournament, error: null };
+  return { data: normalizeTournamentRow(tournament as DbTournamentCompatRow), error: null };
 }
 
 export async function getTournamentWithParticipants(
@@ -169,19 +448,16 @@ export async function getTournamentWithParticipants(
     return { data: null, error: new Error(tournamentError.message) };
   }
 
-  const { data: participants, error: participantsError } = await getSupabaseClient()
-    .from('tournament_participants')
-    .select('*')
-    .eq('tournament_id', id)
-    .order('seed', { ascending: true, nullsFirst: false });
-
-  if (participantsError) {
-    console.error('Error fetching participants:', participantsError);
-    return { data: null, error: new Error(participantsError.message) };
+  const participantsRes = await getParticipants(id);
+  if (participantsRes.error) {
+    return { data: null, error: participantsRes.error };
   }
 
   return {
-    data: { ...tournament, participants: participants || [] },
+    data: {
+      ...(normalizeTournamentRow(tournament as DbTournamentCompatRow) as DbTournament),
+      participants: participantsRes.data,
+    },
     error: null,
   };
 }
@@ -192,22 +468,9 @@ export async function getTournamentWithDetails(
   // Fetch all data in parallel
   const [tournamentRes, participantsRes, matchesRes, standingsRes] = await Promise.all([
     getSupabaseClient().from('tournaments').select('*').eq('id', id).single(),
-    getSupabaseClient()
-      .from('tournament_participants')
-      .select('*')
-      .eq('tournament_id', id)
-      .order('seed', { ascending: true, nullsFirst: false }),
-    getSupabaseClient()
-      .from('matches')
-      .select('*')
-      .eq('tournament_id', id)
-      .order('round_index', { ascending: true })
-      .order('match_index', { ascending: true }),
-    getSupabaseClient()
-      .from('standings')
-      .select('*')
-      .eq('tournament_id', id)
-      .order('points', { ascending: false }),
+    getParticipants(id),
+    getTournamentMatches(id),
+    getTournamentStandings(id),
   ]);
 
   if (tournamentRes.error) {
@@ -215,12 +478,24 @@ export async function getTournamentWithDetails(
     return { data: null, error: new Error(tournamentRes.error.message) };
   }
 
+  if (participantsRes.error) {
+    return { data: null, error: participantsRes.error };
+  }
+
+  if (matchesRes.error) {
+    return { data: null, error: matchesRes.error };
+  }
+
+  if (standingsRes.error) {
+    return { data: null, error: standingsRes.error };
+  }
+
   return {
     data: {
-      ...tournamentRes.data,
-      participants: participantsRes.data || [],
-      matches: matchesRes.data || [],
-      standings: standingsRes.data || [],
+      ...(normalizeTournamentRow(tournamentRes.data as DbTournamentCompatRow) as DbTournament),
+      participants: participantsRes.data,
+      matches: matchesRes.data,
+      standings: standingsRes.data,
     },
     error: null,
   };
@@ -262,7 +537,9 @@ export async function getTournaments(options?: {
     return { data: [], error: new Error(error.message), count: 0 };
   }
 
-  let rows = data || [];
+  let rows = ((data || []) as DbTournamentCompatRow[]).map(
+    (row) => normalizeTournamentRow(row) as DbTournament
+  );
   if (options?.category) {
     rows = rows.filter((tournament: DbTournament) =>
       categoriesMatch(tournament.category, options.category)

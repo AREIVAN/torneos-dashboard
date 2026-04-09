@@ -18,6 +18,7 @@ export default function NewTournamentPage() {
     syncError,
     resetTournament,
     newTournament,
+    refreshOrganizerSession,
     createAndSave,
     generate,
   } = useDbTournamentStore();
@@ -40,17 +41,29 @@ export default function NewTournamentPage() {
       return;
     }
 
+    const canCreateTournament = await refreshOrganizerSession();
+    if (!canCreateTournament) {
+      toast.error("Para crear el torneo primero habilita modo organizador con token.");
+      return;
+    }
+
     // Create tournament in DB
     const tournamentId = await createAndSave();
 
     if (tournamentId) {
-      if (!view) {
-        await generate();
+      await generate();
+
+      const latestSyncError = useDbTournamentStore.getState().syncError;
+      if (latestSyncError) {
+        toast.error(latestSyncError);
+        return;
       }
+
       toast.success("Torneo creado exitosamente");
-      router.push(`/torneos/${tournamentId}`);
+      router.push(`/torneos/${tournamentId}/manage`);
     } else {
-      toast.error(syncError || "Error al crear el torneo");
+      const latestSyncError = useDbTournamentStore.getState().syncError;
+      toast.error(latestSyncError || syncError || "Error al crear el torneo");
     }
   };
 

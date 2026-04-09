@@ -8,9 +8,77 @@ import { normalizeRobotCategory } from '@/lib/categoryNormalization';
 import { secureMutation } from './secureMutation';
 import type {
   DbParticipant,
+  DbParticipantCompatRow,
   DbParticipantInsert,
+  ParticipantTableName,
   ParticipantRobotData,
 } from '@/lib/supabase/database.types';
+
+const PARTICIPANT_TABLE_CANDIDATES: ParticipantTableName[] = [
+  'tournament_players',
+  'tournament_participants',
+];
+let cachedParticipantTable: ParticipantTableName | null = null;
+
+function isMissingSchemaEntityError(error: { message?: string | null } | null, entity: string) {
+  if (!error || !error.message) return false;
+  const message = error.message.toLowerCase();
+  const relationMissing = message.includes('relation') && message.includes('does not exist');
+  return (
+    message.includes(entity.toLowerCase()) &&
+    (message.includes('schema cache') || message.includes('could not find the table') || relationMissing)
+  );
+}
+
+async function resolveParticipantTable() {
+  if (cachedParticipantTable) {
+    return cachedParticipantTable;
+  }
+
+  for (const candidate of PARTICIPANT_TABLE_CANDIDATES) {
+    const { error } = await getSupabaseClient().from(candidate).select('id').limit(1);
+    if (!isMissingSchemaEntityError(error, candidate)) {
+      cachedParticipantTable = candidate;
+      return candidate;
+    }
+  }
+
+  cachedParticipantTable = 'tournament_players';
+  return cachedParticipantTable;
+}
+
+function mapInsertForParticipantTable(table: ParticipantTableName, insert: DbParticipantInsert) {
+  if (table === 'tournament_players') {
+    return {
+      tournament_id: insert.tournament_id,
+      robot_id: insert.robot_id,
+      compact: insert.robot_data,
+      team: insert.robot_data.t || null,
+      seed: insert.seed ?? null,
+    };
+  }
+
+  return insert;
+}
+
+function normalizeParticipantRow(row: DbParticipantCompatRow): DbParticipant {
+  const robotData = row.robot_data ?? row.compact;
+
+  return {
+    id: row.id,
+    tournament_id: row.tournament_id,
+    robot_id: row.robot_id,
+    robot_data:
+      robotData || {
+        i: row.robot_id,
+        n: row.robot_id,
+        t: row.team || 'Sin equipo',
+        c: '',
+      },
+    seed: row.seed,
+    created_at: row.created_at,
+  };
+}
 
 // =============================================
 // CREATE
@@ -22,6 +90,7 @@ export async function addParticipant(
   robotData: ParticipantRobotData,
   seed?: number
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
+  const table = await resolveParticipantTable();
   const insert: DbParticipantInsert = {
     tournament_id: tournamentId,
     robot_id: robotId,
@@ -30,15 +99,19 @@ export async function addParticipant(
   };
 
   try {
-    const data = await secureMutation<DbParticipant>({
-      table: 'tournament_participants',
+    const data = await secureMutation<DbParticipantCompatRow>({
+      table,
       operation: 'insert',
-      data: insert,
+      data: mapInsertForParticipantTable(table, insert),
       single: true,
     });
-    return { data, error: null };
+    return { data: normalizeParticipantRow(data), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'tournament_participants' && message.includes('tournament_participants')) {
+      cachedParticipantTable = null;
+      return addParticipant(tournamentId, robotId, robotData, seed);
+    }
     if (message.toLowerCase().includes('duplicate')) {
       return { data: null, error: new Error('Robot already registered in this tournament') };
     }
@@ -51,6 +124,7 @@ export async function addParticipants(
   tournamentId: string,
   robots: Array<{ robotId: string; robotData: ParticipantRobotData; seed?: number }>
 ): Promise<{ data: DbParticipant[]; errors: Error[] }> {
+  const table = await resolveParticipantTable();
   const inserts: DbParticipantInsert[] = robots.map((robot, index) => ({
     tournament_id: tournamentId,
     robot_id: robot.robotId,
@@ -59,14 +133,18 @@ export async function addParticipants(
   }));
 
   try {
-    const data = await secureMutation<DbParticipant[]>({
-      table: 'tournament_participants',
+    const data = await secureMutation<DbParticipantCompatRow[]>({
+      table,
       operation: 'insert',
-      data: inserts,
+      data: inserts.map((insert) => mapInsertForParticipantTable(table, insert)),
     });
-    return { data: data || [], errors: [] };
+    return { data: (data || []).map(normalizeParticipantRow), errors: [] };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'tournament_participants' && message.includes('tournament_participants')) {
+      cachedParticipantTable = null;
+      return addParticipants(tournamentId, robots);
+    }
     console.error('Error adding participants:', message);
     return { data: [], errors: [new Error(message)] };
   }
@@ -79,32 +157,42 @@ export async function addParticipants(
 export async function getParticipants(
   tournamentId: string
 ): Promise<{ data: DbParticipant[]; error: Error | null }> {
+  const table = await resolveParticipantTable();
   const { data, error } = await getSupabaseClient()
-    .from('tournament_participants')
+    .from(table)
     .select('*')
     .eq('tournament_id', tournamentId)
     .order('seed', { ascending: true, nullsFirst: false });
 
   if (error) {
+    if (table === 'tournament_participants' && isMissingSchemaEntityError(error, 'tournament_participants')) {
+      cachedParticipantTable = null;
+      return getParticipants(tournamentId);
+    }
     console.error('Error fetching participants:', error);
     return { data: [], error: new Error(error.message) };
   }
 
-  return { data: data || [], error: null };
+  return { data: ((data || []) as DbParticipantCompatRow[]).map(normalizeParticipantRow), error: null };
 }
 
 export async function getParticipant(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
+  const table = await resolveParticipantTable();
   const { data, error } = await getSupabaseClient()
-    .from('tournament_participants')
+    .from(table)
     .select('*')
     .eq('tournament_id', tournamentId)
     .eq('robot_id', robotId)
     .single();
 
   if (error) {
+    if (table === 'tournament_participants' && isMissingSchemaEntityError(error, 'tournament_participants')) {
+      cachedParticipantTable = null;
+      return getParticipant(tournamentId, robotId);
+    }
     if (error.code === 'PGRST116') {
       return { data: null, error: null }; // Not found is not an error
     }
@@ -112,18 +200,23 @@ export async function getParticipant(
     return { data: null, error: new Error(error.message) };
   }
 
-  return { data, error: null };
+  return { data: normalizeParticipantRow(data as DbParticipantCompatRow), error: null };
 }
 
 export async function getParticipantCount(
   tournamentId: string
 ): Promise<{ count: number; error: Error | null }> {
+  const table = await resolveParticipantTable();
   const { count, error } = await getSupabaseClient()
-    .from('tournament_participants')
+    .from(table)
     .select('*', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId);
 
   if (error) {
+    if (table === 'tournament_participants' && isMissingSchemaEntityError(error, 'tournament_participants')) {
+      cachedParticipantTable = null;
+      return getParticipantCount(tournamentId);
+    }
     console.error('Error counting participants:', error);
     return { count: 0, error: new Error(error.message) };
   }
@@ -140,17 +233,22 @@ export async function updateParticipantSeed(
   robotId: string,
   seed: number
 ): Promise<{ data: DbParticipant | null; error: Error | null }> {
+  const table = await resolveParticipantTable();
   try {
-    const data = await secureMutation<DbParticipant>({
-      table: 'tournament_participants',
+    const data = await secureMutation<DbParticipantCompatRow>({
+      table,
       operation: 'update',
       data: { seed },
       match: { tournament_id: tournamentId, robot_id: robotId },
       single: true,
     });
-    return { data, error: null };
+    return { data: normalizeParticipantRow(data), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'tournament_participants' && message.includes('tournament_participants')) {
+      cachedParticipantTable = null;
+      return updateParticipantSeed(tournamentId, robotId, seed);
+    }
     console.error('Error updating participant seed:', message);
     return { data: null, error: new Error(message) };
   }
@@ -184,15 +282,20 @@ export async function removeParticipant(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
+  const table = await resolveParticipantTable();
   try {
     await secureMutation<null>({
-      table: 'tournament_participants',
+      table,
       operation: 'delete',
       match: { tournament_id: tournamentId, robot_id: robotId },
       returning: false,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'tournament_participants' && message.includes('tournament_participants')) {
+      cachedParticipantTable = null;
+      return removeParticipant(tournamentId, robotId);
+    }
     console.error('Error removing participant:', message);
     return { error: new Error(message) };
   }
@@ -203,15 +306,20 @@ export async function removeParticipant(
 export async function removeAllParticipants(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
+  const table = await resolveParticipantTable();
   try {
     await secureMutation<null>({
-      table: 'tournament_participants',
+      table,
       operation: 'delete',
       match: { tournament_id: tournamentId },
       returning: false,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (table === 'tournament_participants' && message.includes('tournament_participants')) {
+      cachedParticipantTable = null;
+      return removeAllParticipants(tournamentId);
+    }
     console.error('Error removing all participants:', message);
     return { error: new Error(message) };
   }

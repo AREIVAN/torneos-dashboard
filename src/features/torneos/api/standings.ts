@@ -11,6 +11,26 @@ import type {
   DbMatch,
 } from '@/lib/supabase/database.types';
 import { secureMutation } from './secureMutation';
+import { getTournamentMatches } from './matches';
+
+let standingsUnavailable = false;
+
+function isMissingStandingsTableError(error: { message?: string | null } | null) {
+  if (!error || !error.message) return false;
+  const message = error.message.toLowerCase();
+  const relationMissing = message.includes('relation') && message.includes('does not exist');
+  return (
+    message.includes('standings') &&
+    (message.includes('schema cache') || message.includes('could not find the table') || relationMissing)
+  );
+}
+
+function markStandingsUnavailable(message: string) {
+  if (!standingsUnavailable) {
+    console.warn(`Standings table unavailable, using safe no-op fallback. Reason: ${message}`);
+  }
+  standingsUnavailable = true;
+}
 
 // =============================================
 // CREATE
@@ -19,6 +39,10 @@ import { secureMutation } from './secureMutation';
 export async function createStanding(
   data: DbStandingInsert
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: null, error: null };
+  }
+
   try {
     const standing = await secureMutation<DbStanding>({
       table: 'standings',
@@ -29,6 +53,10 @@ export async function createStanding(
     return { data: standing, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { data: null, error: null };
+    }
     console.error('Error creating standing:', message);
     return { data: null, error: new Error(message) };
   }
@@ -37,6 +65,10 @@ export async function createStanding(
 export async function createStandings(
   standings: DbStandingInsert[]
 ): Promise<{ data: DbStanding[]; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: [], error: null };
+  }
+
   if (standings.length === 0) {
     return { data: [], error: null };
   }
@@ -50,6 +82,10 @@ export async function createStandings(
     return { data: data || [], error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { data: [], error: null };
+    }
     console.error('Error creating standings:', message);
     return { data: [], error: new Error(message) };
   }
@@ -85,6 +121,10 @@ export async function getStanding(
   tournamentId: string,
   robotId: string
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: null, error: null };
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
@@ -93,6 +133,10 @@ export async function getStanding(
     .single();
 
   if (error) {
+    if (isMissingStandingsTableError(error)) {
+      markStandingsUnavailable(error.message);
+      return { data: null, error: null };
+    }
     if (error.code === 'PGRST116') {
       return { data: null, error: null }; // Not found
     }
@@ -110,6 +154,10 @@ export async function getTournamentStandings(
     sortBy?: 'points' | 'wins' | 'final_position';
   }
 ): Promise<{ data: DbStanding[]; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: [], error: null };
+  }
+
   let query = getSupabaseClient()
     .from('standings')
     .select('*')
@@ -126,6 +174,10 @@ export async function getTournamentStandings(
   const { data, error } = await query;
 
   if (error) {
+    if (isMissingStandingsTableError(error)) {
+      markStandingsUnavailable(error.message);
+      return { data: [], error: null };
+    }
     console.error('Error fetching standings:', error);
     return { data: [], error: new Error(error.message) };
   }
@@ -145,6 +197,10 @@ export async function getTournamentStandings(
 export async function getGroupStandings(
   tournamentId: string
 ): Promise<{ data: Map<number, DbStanding[]>; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: new Map(), error: null };
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
@@ -153,6 +209,10 @@ export async function getGroupStandings(
     .order('points', { ascending: false });
 
   if (error) {
+    if (isMissingStandingsTableError(error)) {
+      markStandingsUnavailable(error.message);
+      return { data: new Map(), error: null };
+    }
     console.error('Error fetching group standings:', error);
     return { data: new Map(), error: new Error(error.message) };
   }
@@ -184,6 +244,10 @@ export async function getGroupStandings(
 export async function getFinalPlacements(
   tournamentId: string
 ): Promise<{ data: DbStanding[]; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: [], error: null };
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('standings')
     .select('*')
@@ -192,6 +256,10 @@ export async function getFinalPlacements(
     .order('final_position', { ascending: true });
 
   if (error) {
+    if (isMissingStandingsTableError(error)) {
+      markStandingsUnavailable(error.message);
+      return { data: [], error: null };
+    }
     console.error('Error fetching final placements:', error);
     return { data: [], error: new Error(error.message) };
   }
@@ -208,6 +276,10 @@ export async function updateStanding(
   robotId: string,
   data: DbStandingUpdate
 ): Promise<{ data: DbStanding | null; error: Error | null }> {
+  if (standingsUnavailable) {
+    return { data: null, error: null };
+  }
+
   try {
     const standing = await secureMutation<DbStanding>({
       table: 'standings',
@@ -219,6 +291,10 @@ export async function updateStanding(
     return { data: standing, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { data: null, error: null };
+    }
     console.error('Error updating standing:', message);
     return { data: null, error: new Error(message) };
   }
@@ -313,6 +389,10 @@ export async function deleteStanding(
   tournamentId: string,
   robotId: string
 ): Promise<{ error: Error | null }> {
+  if (standingsUnavailable) {
+    return { error: null };
+  }
+
   try {
     await secureMutation<null>({
       table: 'standings',
@@ -322,6 +402,10 @@ export async function deleteStanding(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { error: null };
+    }
     console.error('Error deleting standing:', message);
     return { error: new Error(message) };
   }
@@ -332,6 +416,10 @@ export async function deleteStanding(
 export async function deleteTournamentStandings(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
+  if (standingsUnavailable) {
+    return { error: null };
+  }
+
   try {
     await secureMutation<null>({
       table: 'standings',
@@ -341,6 +429,10 @@ export async function deleteTournamentStandings(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { error: null };
+    }
     console.error('Error deleting standings:', message);
     return { error: new Error(message) };
   }
@@ -359,18 +451,25 @@ export async function deleteTournamentStandings(
 export async function recalculateStandings(
   tournamentId: string
 ): Promise<{ error: Error | null }> {
-  // Get all matches and participants
+  if (standingsUnavailable) {
+    return { error: null };
+  }
+
   const [matchesRes, standingsRes] = await Promise.all([
-    getSupabaseClient()
-      .from('matches')
-      .select('*')
-      .eq('tournament_id', tournamentId)
-      .not('winner_id', 'is', null),
+    getTournamentMatches(tournamentId),
     getSupabaseClient().from('standings').select('*').eq('tournament_id', tournamentId),
   ]);
 
   if (matchesRes.error) {
-    return { error: new Error(matchesRes.error.message) };
+    return { error: matchesRes.error };
+  }
+
+  if (standingsRes.error) {
+    if (isMissingStandingsTableError(standingsRes.error)) {
+      markStandingsUnavailable(standingsRes.error.message);
+      return { error: null };
+    }
+    return { error: new Error(standingsRes.error.message) };
   }
 
   // Reset standings
@@ -441,6 +540,10 @@ export async function recalculateStandings(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    if (isMissingStandingsTableError({ message })) {
+      markStandingsUnavailable(message);
+      return { error: null };
+    }
     console.error('Error recalculating standings:', message);
     return { error: new Error(message) };
   }

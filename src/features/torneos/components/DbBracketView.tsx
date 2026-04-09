@@ -460,7 +460,6 @@ export default function DbBracketView() {
     shufflePlayers,
     clearView,
     viewMode,
-    organizerUnlocked,
     unlockOrganizerMode,
     refreshOrganizerSession,
     setViewMode,
@@ -494,12 +493,8 @@ export default function DbBracketView() {
       setTokenError(null);
       return;
     }
-
-    if (organizerUnlocked) {
-      setViewMode("organizer");
-      return;
-    }
-
+    setTokenValue("");
+    setTokenError(null);
     setShowTokenInput(true);
   };
 

@@ -1,4 +1,6 @@
-type WritableTable = 'tournaments' | 'tournament_participants' | 'matches' | 'standings';
+import type { WritableTableName } from '@/lib/supabase/database.types';
+
+type WritableTable = WritableTableName;
 type MutationOperation = 'insert' | 'update' | 'delete' | 'upsert';
 
 interface SecureMutationRequest {
