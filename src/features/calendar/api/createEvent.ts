@@ -1,4 +1,3 @@
-import { getSupabaseClient } from "@/lib/supabase/client";
 import type { CalendarEvent } from "./getEvents";
 
 export interface CreateEventInput {
@@ -60,16 +59,31 @@ export async function createEvent(input: CreateEventInput): Promise<CreateEventR
     is_public: input.is_public ?? true,
   };
 
-  const { data, error } = await getSupabaseClient()
-    .from("events")
-    .insert([eventData])
-    .select()
-    .single();
+  try {
+    const response = await fetch("/api/events/secure-write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(eventData),
+    });
 
-  if (error) {
-    console.error("Error creating event:", error.message);
-    return { success: false, error: error.message };
+    const payload = (await response.json().catch(() => null)) as
+      | { data?: CalendarEvent; error?: string }
+      | null;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload?.error || "No se pudo crear el evento",
+      };
+    }
+
+    if (!payload?.data) {
+      return { success: false, error: "Respuesta invalida del servidor" };
+    }
+
+    return { success: true, data: payload.data };
+  } catch {
+    return { success: false, error: "Error de red al crear el evento" };
   }
-
-  return { success: true, data: data as CalendarEvent };
 }

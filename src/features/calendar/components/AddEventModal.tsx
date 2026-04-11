@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,11 @@ import {
   normalizeRobotCategory,
   ROBOT_CATEGORY_OPTIONS,
 } from "@/lib/categoryNormalization";
+import {
+  hasOrganizerSession,
+  validateOrganizerToken,
+} from "@/features/torneos/lib/organizerAuth";
 import { createEvent, type CreateEventInput } from "../api/createEvent";
-
-const ADMIN_KEY = "areivan";
 
 interface AddEventModalProps {
   open: boolean;
@@ -74,13 +76,45 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
-  const handleVerifyKey = () => {
-    if (secretKey === ADMIN_KEY) {
-      setStep("form");
-      setAuthError("");
-    } else {
-      setAuthError("Clave incorrecta");
+  useEffect(() => {
+    if (!open) return;
+
+    let active = true;
+
+    const verifyCurrentSession = async () => {
+      const hasSession = await hasOrganizerSession();
+      if (!active) return;
+
+      if (hasSession) {
+        setStep("form");
+        setAuthError("");
+      }
+    };
+
+    void verifyCurrentSession();
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  const handleVerifyKey = async () => {
+    setVerifying(true);
+
+    try {
+      const valid = await validateOrganizerToken(secretKey);
+      if (valid) {
+        setStep("form");
+        setAuthError("");
+      } else {
+        setAuthError("Clave incorrecta");
+      }
+    } catch {
+      setAuthError("No se pudo validar la clave");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -90,6 +124,7 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
     setAuthError("");
     setFormData(initialFormData);
     setSaveError("");
+    setVerifying(false);
     onClose();
   };
 
@@ -200,7 +235,11 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
                   type="password"
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleVerifyKey()}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || verifying) return;
+                    e.preventDefault();
+                    void handleVerifyKey();
+                  }}
                   placeholder="Clave secreta..."
                   className="bg-brand-bg/50 border-brand-stroke/30 text-brand-text"
                 />
@@ -209,10 +248,11 @@ export function AddEventModal({ open, onClose, onSuccess }: AddEventModalProps) 
                 )}
               </div>
               <Button
-                onClick={handleVerifyKey}
+                onClick={() => void handleVerifyKey()}
+                disabled={verifying}
                 className="w-full bg-brand-neon/20 border border-brand-neon/40 text-brand-text hover:bg-brand-neon/30"
               >
-                Verificar
+                {verifying ? "Verificando..." : "Verificar"}
               </Button>
             </div>
           </div>
