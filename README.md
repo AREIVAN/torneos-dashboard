@@ -1,67 +1,76 @@
+# 🤖 Torneos Dashboard (Minisumo App)
 
-https://apex-robotics-qr.netlify.app/
+Una plataforma integral diseñada para la gestión, organización y visualización de torneos de robótica (con foco en categorías como Minisumo). Este dashboard permite a los organizadores administrar eventos en un calendario, gestionar los robots inscritos, visualizar estadísticas detalladas y manejar la logística del evento mediante la generación y validación de códigos QR.
 
+🔗 **Demo/Producción:** [https://apex-robotics-qr.netlify.app/](https://apex-robotics-qr.netlify.app/)
 
+---
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## 🚀 Tecnologías Principales
 
-## Getting Started
+Este proyecto está construido con un stack moderno, priorizando el rendimiento, la seguridad y una experiencia de usuario fluida:
 
-First, run the development server:
+### Frontend
+- **Framework:** [Next.js](https://nextjs.org/) (App Router) usando [React 19](https://react.dev/).
+- **Lenguaje:** TypeScript, para un código robusto y tipado estático.
+- **Estilos y UI:** [Tailwind CSS v4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), `lucide-react` para iconos y `framer-motion` para animaciones fluidas e interactivas.
+- **Gráficos:** [ECharts](https://echarts.apache.org/) (vía `echarts-for-react`) para visualización de datos y panel de estadísticas.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Gestión de Estado y Datos
+- **Server State:** [TanStack Query](https://tanstack.com/query) (`@tanstack/react-query`) para la sincronización y caché de datos del backend.
+- **Client State:** [Zustand](https://zustand-demo.pmnd.rs/) para un manejo de estado global ligero y rápido.
+- **Formularios:** [TanStack Form](https://tanstack.com/form) combinado con [Zod](https://zod.dev/) para validación estricta de esquemas.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Backend y Base de Datos
+- **BaaS (Backend as a Service):** [Supabase](https://supabase.com/) (`@supabase/supabase-js`). Funciona como la base de datos PostgreSQL principal, gestionando eventos, equipos y robots registrados.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Utilidades Extra
+- Generación de códigos QR con la librería `qrcode`, esencial para la logística del evento.
+- Manejo de fechas con `date-fns` y `react-day-picker`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Organizer Security (Phase 2)
+## 🔒 Arquitectura de Seguridad y Acceso (Fase 2)
 
-- Organizer auth uses per-token scope and server-issued `httpOnly` sessions.
-- Mutations in `/api/torneos/secure-write` are allowed only for tournaments included in the session scope.
-- Organizer tokens are persisted hashed (`scrypt + salt`) in `public.organizer_tokens`.
-- Sessions are persisted in `public.organizer_sessions` to support revocation.
+El dashboard cuenta con un control de acceso para los organizadores de los torneos:
 
-### Temporary compatibility fallback
+- **Autenticación Basada en Tokens:** La autenticación de los organizadores utiliza *scopes* por token y sesiones emitidas por el servidor configuradas como `httpOnly` para prevenir ataques XSS.
+- **Mutaciones Seguras:** Los endpoints para escribir (ej. `/api/torneos/secure-write`) validan estrictamente que la sesión tenga acceso únicamente a los torneos autorizados.
+- **Almacenamiento Seguro:** Los tokens de organizador se persisten usando un hash criptográfico (`scrypt + salt`) en la tabla `public.organizer_tokens` de Supabase.
+- **Revocación de Sesiones:** Las sesiones activas se registran en `public.organizer_sessions`, permitiendo invalidarlas o revocarlas de forma individual o global.
 
-- The legacy token (`areivan`, from `ORGANIZER_MODE_TOKEN`) remains enabled only while there are zero rows in `public.organizer_tokens`.
-- As soon as at least one organizer token exists, legacy fallback is disabled automatically.
+*(Nota: De forma transitoria existe un fallback legacy para el token de organizador maestro desde la variable de entorno `ORGANIZER_MODE_TOKEN`, pero este se desactiva automáticamente en cuanto se registra el primer token seguro en la base de datos).*
 
-### Apply migrations
+---
 
-Run these commands from the repository root:
+## 💻 Desarrollo Local
 
-```bash
-supabase db push
-```
+### Requisitos Previos
+- Node.js (v18+)
+- Gestor de paquetes (`npm`, `yarn`, `pnpm` o `bun`)
+- Proyecto de Supabase configurado y enlazado.
 
-If you run against a linked remote project and want to include all local migrations explicitly:
+### Instalación
 
-```bash
-supabase db push --include-all
-```
+1. Clona el repositorio e instala las dependencias:
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. Configura tus variables de entorno en un archivo `.env` basándote en los requerimientos de la aplicación (URL de Supabase, keys, etc).
 
-To learn more about Next.js, take a look at the following resources:
+3. Sincroniza la base de datos (si estás usando migraciones locales de Supabase):
+   ```bash
+   npx supabase db push
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Inicia el servidor de desarrollo:
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver la aplicación local corriendo.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> El código es nuestra herramienta, pero entender el porqué es nuestra responsabilidad. ¡Buen código! 🚀
