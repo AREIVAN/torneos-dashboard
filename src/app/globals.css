@@ -109,6 +109,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
     background:
@@ -133,6 +138,35 @@
   select:focus:not(:focus-visible),
   textarea:focus:not(:focus-visible) {
     outline: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    button:not(:disabled),
+    a[href] {
+      transition-property: transform, opacity, background-color, border-color, color, box-shadow, filter;
+      transition-duration: 200ms;
+      transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    button:not(:disabled):active,
+    a[href]:active {
+      transform: scale(0.98);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

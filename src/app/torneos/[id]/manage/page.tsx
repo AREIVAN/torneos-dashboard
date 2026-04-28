@@ -57,7 +57,7 @@ export default function TournamentManagePage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href={`/torneos/${tournamentId}`}
-            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 transition-all"
+            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Ver detalle
           </Link>
@@ -69,7 +69,7 @@ export default function TournamentManagePage() {
                 return !currentVisible;
               })
             }
-            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 transition-all"
+            className="border border-brand-stroke/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             {showSetupPanel ? "Ocultar configuracion" : "Mostrar configuracion"}
           </button>
@@ -77,7 +77,7 @@ export default function TournamentManagePage() {
           <button
             onClick={() => void handleSave()}
             disabled={isSyncing}
-            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 transition-all disabled:opacity-60"
+            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-60"
           >
             {isSyncing ? "Guardando..." : "Guardar cambios"}
           </button>

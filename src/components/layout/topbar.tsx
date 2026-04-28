@@ -30,7 +30,7 @@ export function Topbar() {
       {/* Logo */}
       <Link 
         href="/" 
-        className="flex items-center gap-2.5 px-3 py-2.5 border border-brand-stroke/35 bg-gradient-to-b from-brand-panel/85 to-brand-panel2/55 rounded-full shadow-[inset_0_0_0_1px_rgba(122,63,255,0.08)] hover:brightness-110 transition-all"
+        className="flex items-center gap-2.5 px-3 py-2.5 border border-brand-stroke/35 bg-gradient-to-b from-brand-panel/85 to-brand-panel2/55 rounded-full shadow-[inset_0_0_0_1px_rgba(122,63,255,0.08)] hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
       >
         <div className="w-2.5 h-2.5 rounded-full bg-[conic-gradient(from_210deg,var(--color-brand-neon),var(--color-brand-neon2),var(--color-brand-hot),var(--color-brand-neon))] drop-shadow-[0_0_10px_rgba(122,63,255,0.6)]" />
         <span className="font-extrabold tracking-wide text-sm">APEX</span>
@@ -43,7 +43,7 @@ export function Topbar() {
           <Link
             key={item.href}
             href={item.href}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               isActive(item.href)
                 ? "bg-brand-neon/20 text-brand-text"
                 : "text-brand-muted hover:text-brand-text hover:bg-brand-neon/10"
@@ -59,7 +59,7 @@ export function Topbar() {
         {/* Register robot button (desktop only) */}
         <Link
           href="/robots/new"
-          className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-neon/45 bg-gradient-to-r from-brand-neon/20 to-brand-neon2/10 text-brand-text text-sm font-extrabold tracking-wide hover:brightness-110 transition-all"
+          className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-neon/45 bg-gradient-to-r from-brand-neon/20 to-brand-neon2/10 text-brand-text text-sm font-extrabold tracking-wide hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

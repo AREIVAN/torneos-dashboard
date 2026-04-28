@@ -78,13 +78,13 @@ export function CalendarPage() {
             onClick={() => {
               void refetch();
             }}
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Actualizar
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Agregar evento
           </button>
@@ -101,25 +101,25 @@ export function CalendarPage() {
               if (e.key === "Escape") setQuery("");
             }}
             placeholder="Buscar torneo (nombre, ciudad, categoría, tags)..."
-            className="flex-1 min-w-[200px] px-3 py-2.5 rounded-xl border border-brand-neon/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+            className="flex-1 min-w-[200px] px-3 py-2.5 rounded-xl border border-brand-neon/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           />
           <button
             onClick={handleClear}
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Limpiar
           </button>
           <button
             onClick={handleSubscribe}
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             title="Exporta un .ics con próximos eventos"
           >
             Suscribirse (ICS)
           </button>
-          <button className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/28 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/28 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
             Lista
           </button>
-          <button className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
             Mes
           </button>
         </div>
@@ -128,7 +128,7 @@ export function CalendarPage() {
         <div className="flex flex-wrap gap-2 items-center">
           <span
             onClick={() => setChip("ALL")}
-            className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer transition-all ${
+            className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               chip === "ALL"
                 ? "border-brand-neon2/55 bg-brand-bg/35 text-brand-text"
                 : "border-brand-neon/20 bg-brand-bg/15 text-brand-muted hover:border-brand-neon2/40"
@@ -140,7 +140,7 @@ export function CalendarPage() {
             <span
               key={c}
               onClick={() => setChip(c)}
-              className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs border cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                 chip === c
                   ? "border-brand-neon2/55 bg-brand-bg/35 text-brand-text"
                   : "border-brand-neon/20 bg-brand-bg/15 text-brand-muted hover:border-brand-neon2/40"

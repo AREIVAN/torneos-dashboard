@@ -76,20 +76,20 @@ function MatchCard({
           <button
             onClick={() => onWin("a")}
             disabled={isBye(m.a)}
-            className="flex-1 border border-brand-neon/30 bg-brand-neon/10 text-brand-text px-2 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 cursor-pointer transition-all disabled:opacity-30"
+            className="flex-1 border border-brand-neon/30 bg-brand-neon/10 text-brand-text px-2 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-30"
           >
             +1 A
           </button>
           <button
             onClick={() => onWin("b")}
             disabled={isBye(m.b)}
-            className="flex-1 border border-brand-neon/30 bg-brand-neon/10 text-brand-text px-2 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 cursor-pointer transition-all disabled:opacity-30"
+            className="flex-1 border border-brand-neon/30 bg-brand-neon/10 text-brand-text px-2 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-30"
           >
             +1 B
           </button>
           <button
             onClick={onClear}
-            className="flex-1 border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-2 py-1.5 rounded-lg text-xs hover:brightness-110 cursor-pointer transition-all"
+            className="flex-1 border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-2 py-1.5 rounded-lg text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Reset
           </button>
@@ -500,19 +500,19 @@ export default function BracketView() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={generate}
-            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Generar
           </button>
           <button
             onClick={clearView}
-            className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Limpiar
           </button>
           <button
             onClick={() => setViewStyle(viewStyle === "columns" ? "map" : "columns")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               viewStyle === "map"
                 ? "border border-brand-neon/45 bg-brand-neon/20 text-brand-text"
                 : "border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted hover:brightness-110"
@@ -522,7 +522,7 @@ export default function BracketView() {
           </button>
           <button
             onClick={handleToggleViewMode}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               viewMode === "organizer"
                 ? "border border-brand-neon/45 bg-brand-neon/20 text-brand-text"
                 : "border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted hover:brightness-110"

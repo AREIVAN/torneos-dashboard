@@ -60,7 +60,7 @@ export default function MisRobotsPage() {
           <b className="text-lg tracking-wide text-brand-text">Mis Robots</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <button onClick={() => { if(confirm("¿Estás seguro de limpiar la lista local? No se borrarán de la base de datos.")) clearMine() }} className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button onClick={() => { if(confirm("¿Estás seguro de limpiar la lista local? No se borrarán de la base de datos.")) clearMine() }} className="border border-brand-hot/25 bg-brand-hot/10 text-brand-hot px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
             Limpiar Lista
           </button>
         </div>
@@ -84,7 +84,7 @@ export default function MisRobotsPage() {
                 myRobots?.map((robot: { robot_id: string; [key: string]: unknown }) => {
                  const rd = extractRobotFields(robot);
                  return (
-                 <Link href={`/robots/${robot.robot_id}`} key={robot.robot_id} className="block rounded-[18px] border border-brand-neon/20 bg-brand-bg/25 p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px">
+                 <Link href={`/robots/${robot.robot_id}`} key={robot.robot_id} className="block rounded-[18px] border border-brand-neon/20 bg-brand-bg/25 p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px">
                    <div className="flex justify-between items-start mb-2">
                        <h3 className="text-lg font-black text-brand-text m-0">{rd.nombre || 'Sin nombre'}</h3>
                        <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-brand-neon/20 text-brand-text border border-brand-neon/40">#{robot.robot_id}</span>

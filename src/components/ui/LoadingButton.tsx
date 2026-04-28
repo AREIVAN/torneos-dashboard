@@ -26,7 +26,7 @@ export const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
         className={`
           relative inline-flex items-center justify-center gap-2
           px-4 py-2.5 rounded-xl text-sm font-extrabold tracking-wide
-          border transition-all cursor-pointer
+          border motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none cursor-pointer
           hover:brightness-110
           disabled:opacity-50 disabled:cursor-not-allowed
           focus-visible:outline-2 focus-visible:outline-brand-neon focus-visible:outline-offset-2

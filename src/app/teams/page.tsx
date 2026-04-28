@@ -40,8 +40,12 @@ export default function TeamsPage() {
   const selectedTeam = teams.find((t) => t.id === effectiveSelectedId);
 
   useEffect(() => {
-    const channel = getSupabaseClient()
-      .channel('robot-cards-teams')
+    const supabase = getSupabaseClient();
+    const channelId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const channelName = `robot-cards-teams-${effectiveSelectedId ?? "all"}-${channelId}`;
+
+    const channel = supabase
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'robot_cards' }, (payload: RealtimePostgresChangesPayload<{ team_id?: string }>) => {
         const nextTeamId = (payload.new as { team_id?: unknown } | null)?.team_id;
         const prevTeamId = (payload.old as { team_id?: unknown } | null)?.team_id;
@@ -55,7 +59,7 @@ export default function TeamsPage() {
       .subscribe();
 
     return () => {
-      void getSupabaseClient().removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [effectiveSelectedId, queryClient]);
 
@@ -74,7 +78,7 @@ export default function TeamsPage() {
                   queryClient.invalidateQueries({ queryKey: ["team-robots"] }),
                 ]);
               }}
-            className="border border-brand-hot/45 bg-linear-to-r from-brand-hot/20 to-brand-hot/5 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-hot/45 bg-linear-to-r from-brand-hot/20 to-brand-hot/5 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Actualizar
           </button>
@@ -94,7 +98,7 @@ export default function TeamsPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar equipo..."
             maxLength={48}
-            className="w-full px-3 py-2.5 rounded-xl border border-brand-neon/18 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all mb-2.5"
+            className="w-full px-3 py-2.5 rounded-xl border border-brand-neon/18 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none mb-2.5"
           />
 
           {teamsLoading ? (
@@ -115,7 +119,7 @@ export default function TeamsPage() {
                 <button
                   key={t.id}
                   onClick={() => setSelectedTeamId(t.id)}
-                  className={`text-left rounded-[14px] p-2.5 cursor-pointer transition-all border ${
+                  className={`text-left rounded-[14px] p-2.5 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none border ${
                     effectiveSelectedId === t.id
                       ? "bg-brand-neon/12 border-brand-neon/30"
                       : "bg-brand-panel2/55 border-brand-neon/10 hover:bg-brand-neon/7"
@@ -195,7 +199,7 @@ export default function TeamsPage() {
                         </div>
                         <Link
                           href={`/robots/${r.robot_id}`}
-                          className="border border-brand-neon2/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 transition-all"
+                          className="border border-brand-neon2/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                         >
                           Abrir
                         </Link>

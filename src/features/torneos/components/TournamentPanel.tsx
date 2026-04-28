@@ -90,7 +90,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               value={tournament.name}
               onChange={(e) => setTournament({ name: e.target.value })}
               placeholder="Ej. Copa MiniSumo CDMX 2026"
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             />
           </div>
 
@@ -103,7 +103,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               onChange={(e) =>
                 setTournament({ category: e.target.value })
               }
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all appearance-none cursor-pointer"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none appearance-none cursor-pointer"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -121,7 +121,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               value={tournament.venue}
               onChange={(e) => setTournament({ venue: e.target.value })}
               placeholder="Ej. ESIME Azcapotzalco"
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             />
           </div>
 
@@ -133,7 +133,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               type="date"
               value={tournament.date}
               onChange={(e) => setTournament({ date: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             />
           </div>
 
@@ -148,7 +148,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                   format: e.target.value as "single" | "groups" | "double",
                 })
               }
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all appearance-none cursor-pointer"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none appearance-none cursor-pointer"
             >
               <option value="single">
                 Eliminación directa (Single)
@@ -171,7 +171,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               onChange={(e) =>
                 setTournament({ n: Math.max(2, parseInt(e.target.value) || 2) })
               }
-              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+              className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             />
           </div>
 
@@ -190,7 +190,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                       groups: Math.max(2, parseInt(e.target.value) || 2),
                     })
                   }
-                  className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+                  className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                 />
               </div>
 
@@ -207,7 +207,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                       adv: Math.max(1, parseInt(e.target.value) || 1),
                     })
                   }
-                  className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+                  className="w-full px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                 />
               </div>
             </>
@@ -223,12 +223,12 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Ej. MS-014 o KRAKEN o RoboDragons"
-            className="flex-1 px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 transition-all"
+            className="flex-1 px-3 py-2.5 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text text-sm outline-none focus:border-brand-neon/35 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           />
           <button
             onClick={handleSearch}
             disabled={searching}
-            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all disabled:opacity-50"
+            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-50"
           >
             {searching ? "..." : "Buscar"}
           </button>
@@ -241,7 +241,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
               setSearchResults([]);
               setSearchDone(false);
             }}
-            className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-3 py-1.5 rounded-lg text-xs hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-3 py-1.5 rounded-lg text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Limpiar
           </button>
@@ -269,7 +269,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                     <button
                       onClick={() => handleAddPlayer(r)}
                       disabled={added}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                         added
                           ? "bg-brand-neon/10 text-brand-muted cursor-default"
                           : "border border-brand-neon/45 bg-brand-neon/20 text-brand-text hover:brightness-110"
@@ -281,7 +281,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                       onClick={() =>
                         (window.location.hash = `#/robots/${r.robot_id}`)
                       }
-                      className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-2.5 py-1 rounded-lg text-xs hover:brightness-110 cursor-pointer transition-all"
+                      className="border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-2.5 py-1 rounded-lg text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                     >
                       Ver
                     </button>
@@ -340,7 +340,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                     <button
                       onClick={() => reorderPlayer(p.i!, "up")}
                       disabled={i === 0}
-                      className="w-7 h-7 flex items-center justify-center border border-brand-stroke/20 bg-brand-panel/40 text-brand-text rounded-lg text-xs hover:brightness-110 cursor-pointer transition-all disabled:opacity-30"
+                      className="w-7 h-7 flex items-center justify-center border border-brand-stroke/20 bg-brand-panel/40 text-brand-text rounded-lg text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-30"
                       title="Subir"
                     >
                       ↑
@@ -348,14 +348,14 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
                     <button
                       onClick={() => reorderPlayer(p.i!, "down")}
                       disabled={i === players.length - 1}
-                      className="w-7 h-7 flex items-center justify-center border border-brand-stroke/20 bg-brand-panel/40 text-brand-text rounded-lg text-xs hover:brightness-110 cursor-pointer transition-all disabled:opacity-30"
+                      className="w-7 h-7 flex items-center justify-center border border-brand-stroke/20 bg-brand-panel/40 text-brand-text rounded-lg text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-30"
                       title="Bajar"
                     >
                       ↓
                     </button>
                     <button
                       onClick={() => removePlayer(p.i!)}
-                      className="px-2 py-1 border border-brand-hot/25 bg-brand-hot/10 text-brand-hot rounded-lg text-xs font-bold hover:bg-brand-hot/20 cursor-pointer transition-all"
+                      className="px-2 py-1 border border-brand-hot/25 bg-brand-hot/10 text-brand-hot rounded-lg text-xs font-bold hover:bg-brand-hot/20 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                       title="Quitar"
                     >
                       ×
@@ -371,7 +371,7 @@ export default function TournamentPanel({ useDatabase = false }: TournamentPanel
           <div className="mt-3">
             <button
               onClick={shufflePlayers}
-              className="w-full border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-3 py-2 rounded-xl text-xs hover:brightness-110 cursor-pointer transition-all"
+              className="w-full border border-brand-stroke/20 bg-brand-panel/40 text-brand-muted px-3 py-2 rounded-xl text-xs hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             >
               Mezclar orden
             </button>

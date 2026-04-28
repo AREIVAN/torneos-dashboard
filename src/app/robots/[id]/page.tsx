@@ -123,7 +123,7 @@ export default function RobotViewerPage() {
           <b className="text-lg tracking-wide text-brand-text">{isLoading ? 'Cargando...' : robotData?.nombre || 'Robot no encontrado'}</b>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Link href="/robots/mine" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <Link href="/robots/mine" className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
             Mis Robots
           </Link>
         </div>
@@ -253,7 +253,7 @@ export default function RobotViewerPage() {
                     )}
                  </div>
                  <div className="w-full text-center">
-                    <button className="w-full border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-6 py-3 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+                    <button className="w-full border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-6 py-3 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
                        Compartir Link
                     </button>
                     <p className="text-brand-muted text-[10px] mt-2 leading-relaxed">

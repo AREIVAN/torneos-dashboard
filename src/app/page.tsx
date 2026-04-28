@@ -36,29 +36,29 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-2.5">
           <Link
             href="/robots/new"
-            className="border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Registrar Robot
           </Link>
           <Link
             href="/robots/mine"
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Mis Robots
           </Link>
           <Link
             href="/torneos"
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Torneos
           </Link>
           <Link
             href="/teams"
-            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all"
+            className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Teams
           </Link>
-          <button className="border border-brand-hot/45 bg-brand-hot/10 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all">
+          <button className="border border-brand-hot/45 bg-brand-hot/10 text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
             Actualizar
           </button>
         </div>
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Link
             href="/"
-            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-brand-neon2/55 bg-brand-bg/35 text-brand-text">
               Inicio
@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
           <Link
             href="/robots/new"
-            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-[#FFB020]/55 bg-brand-bg/35 text-brand-text">
               Nuevo
@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
           <Link
             href="/robots/mine"
-            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-brand-neon/28 bg-brand-bg/35 text-brand-muted">
               Lista
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
           <Link
             href="/torneos"
-            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122,63,255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(122, 63, 255,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122,63,255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(122, 63, 255,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-brand-hot/55 bg-brand-bg/35 text-brand-text">
               Torneo
@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
           <Link
             href="/calendar"
-            className="rounded-[18px] border border-[#FFB020]/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(255,176,32,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-[#FFB020]/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(255,176,32,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(255,46,136,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-brand-neon2/55 bg-brand-bg/35 text-brand-text">
               Calendario
@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
           <Link
             href="/teams"
-            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(122,63,255,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer transition-all hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
+            className="rounded-[18px] border border-brand-neon/20 bg-[radial-gradient(700px_220px_at_0%_0%,rgba(122, 63, 255,0.10),transparent_55%),radial-gradient(700px_220px_at_100%_0%,rgba(122,63,255,0.08),transparent_55%),rgba(7,10,16,0.25)] p-4 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:brightness-110 hover:-translate-y-px min-h-[110px] block"
           >
             <div className="px-2.5 py-1.5 rounded-full text-[12px] border border-brand-neon/28 bg-brand-bg/35 text-brand-muted">
               Equipos
@@ -171,7 +171,7 @@ export default function DashboardPage() {
             onChange={(e) => setSearchId(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Ej. 014"
-            className="flex-1 px-3 py-2.5 rounded-xl border border-brand-neon/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+            className="flex-1 px-3 py-2.5 rounded-xl border border-brand-neon/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           />
           <button
             onClick={handleSearch}

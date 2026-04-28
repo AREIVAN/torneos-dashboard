@@ -160,7 +160,7 @@ export default function NewRobotPage() {
                   type="button"
                   onClick={form.handleSubmit}
                   disabled={!canSubmit || isSubmitting}
-                  className="border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="border border-brand-stroke/45 bg-linear-to-r from-brand-stroke/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-3 py-2 rounded-xl font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Guardando..." : "Generar QR"}
                 </button>
@@ -190,7 +190,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Ej. KRAKEN"
                     maxLength={24}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                   {field.state.meta.errors ? <p className="text-brand-hot text-[11px] mt-1.5">{formatFieldErrors(field.state.meta.errors)}</p> : null}
                 </div>
@@ -205,7 +205,7 @@ export default function NewRobotPage() {
                   <select
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none appearance-none"
                   >
                     <option value="">(selecciona)</option>
                     {ROBOT_CATEGORY_OPTIONS.map((category) => (
@@ -232,7 +232,7 @@ export default function NewRobotPage() {
                       const selectedTeam = teams.find((team) => team.id === teamId);
                       field.handleChange(selectedTeam?.name || "");
                     }}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none mb-2"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none appearance-none mb-2"
                   >
                     <option value="">(sin equipo)</option>
                     {teams.map((team) => (
@@ -250,7 +250,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Ej. RoboDragons"
                     maxLength={24}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -269,7 +269,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Nombre del piloto"
                     maxLength={24}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -288,7 +288,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Ej. ESIME Azcapotzalco"
                     maxLength={32}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -307,7 +307,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="email@ejemplo.com o +52..."
                     maxLength={40}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -324,7 +324,7 @@ export default function NewRobotPage() {
                   <select
                     value={field.state.value || ""}
                     onChange={(e) => field.handleChange(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all appearance-none"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none appearance-none"
                   >
                     <option value="">(selecciona)</option>
                     <option value="Remoto">Remoto</option>
@@ -348,7 +348,7 @@ export default function NewRobotPage() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     placeholder="Ej. 2.4GHz DSMX, 433MHz, BT"
                     maxLength={24}
-                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                    className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -369,7 +369,7 @@ export default function NewRobotPage() {
                       onChange={(e) => field.handleChange(e.target.valueAsNumber)}
                       min={0}
                       placeholder="Ej. 498"
-                      className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                      className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                     />
                   </div>
                 )}
@@ -388,7 +388,7 @@ export default function NewRobotPage() {
                       onChange={(e) => field.handleChange(e.target.value)}
                       placeholder="Ej. 100x100x55"
                       maxLength={20}
-                      className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] transition-all"
+                      className="w-full px-3 py-3 rounded-xl border border-brand-stroke/20 bg-brand-bg/35 text-brand-text outline-none focus:border-brand-neon/35 focus:ring-1 focus:ring-[inset_0_0_0_1px_rgba(122, 63, 255,0.1)] motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                     />
                   </div>
                 )}
@@ -396,7 +396,7 @@ export default function NewRobotPage() {
 
               <div className="sm:col-span-2">
                  <label className="block text-xs text-brand-muted/80 mb-1.5">Foto del Robot (Opcional)</label>
-                 <div {...getRootProps()} className={`w-full p-6 rounded-xl border-2 border-dashed ${isDragActive ? 'border-brand-neon bg-brand-neon/10' : 'border-brand-stroke/40 bg-brand-bg/25'} text-center cursor-pointer transition-all hover:bg-brand-stroke/20`}>
+                 <div {...getRootProps()} className={`w-full p-6 rounded-xl border-2 border-dashed ${isDragActive ? 'border-brand-neon bg-brand-neon/10' : 'border-brand-stroke/40 bg-brand-bg/25'} text-center cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none hover:bg-brand-stroke/20`}>
                    <input {...getInputProps()} />
                    {isDragActive ? (
                      <p className="text-brand-neon text-sm font-bold">Suelta la imagen aquí...</p>

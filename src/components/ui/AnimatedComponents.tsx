@@ -1,13 +1,16 @@
 "use client";
 
-import { motion, type HTMLMotionProps } from "framer-motion";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import { forwardRef } from "react";
+
+export const motionEase = [0.22, 1, 0.36, 1] as const;
+export const moveEase = [0.25, 1, 0.5, 1] as const;
 
 // Variantes de animación predefinidas
 export const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
+  exit: { opacity: 0, y: -6 },
 };
 
 export const fadeIn = {
@@ -23,21 +26,21 @@ export const scaleIn = {
 };
 
 export const slideInLeft = {
-  initial: { opacity: 0, x: -20 },
+  initial: { opacity: 0, x: -16 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
+  exit: { opacity: 0, x: 16 },
 };
 
 export const slideInRight = {
-  initial: { opacity: 0, x: 20 },
+  initial: { opacity: 0, x: 16 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
+  exit: { opacity: 0, x: -16 },
 };
 
 // Transiciones predefinidas
 export const defaultTransition = {
-  duration: 0.3,
-  ease: "easeOut" as const,
+  duration: 0.22,
+  ease: motionEase,
 };
 
 export const springTransition = {
@@ -73,13 +76,15 @@ const variants = {
 
 export const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
   ({ variant = "fadeInUp", delay = 0, duration = 0.3, className, children, ...props }, ref) => {
+    const shouldReduceMotion = useReducedMotion();
+
     return (
       <motion.div
         ref={ref}
-        variants={variants[variant]}
-        initial="initial"
-        animate="animate"
-        exit="exit"
+        variants={shouldReduceMotion ? undefined : variants[variant]}
+        initial={shouldReduceMotion ? false : "initial"}
+        animate={shouldReduceMotion ? undefined : "animate"}
+        exit={shouldReduceMotion ? undefined : "exit"}
         transition={{
           ...defaultTransition,
           duration,
@@ -104,16 +109,18 @@ interface AnimatedListProps {
 }
 
 export function AnimatedList({ children, className, staggerDelay = 0.05 }: AnimatedListProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      initial="initial"
-      animate="animate"
+      initial={shouldReduceMotion ? false : "initial"}
+      animate={shouldReduceMotion ? undefined : "animate"}
       variants={{
         initial: {},
         animate: {
           transition: {
-            staggerChildren: staggerDelay,
+            staggerChildren: shouldReduceMotion ? 0 : staggerDelay,
           },
         },
       }}
@@ -130,10 +137,12 @@ interface AnimatedListItemProps extends Omit<HTMLMotionProps<"div">, "variants">
 }
 
 export function AnimatedListItem({ children, className, ...props }: AnimatedListItemProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      variants={fadeInUp}
+      variants={shouldReduceMotion ? undefined : fadeInUp}
       transition={defaultTransition}
       {...props}
     >
@@ -157,15 +166,17 @@ export function HoverCard({
   hoverY = -2,
   ...props 
 }: HoverCardProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      whileHover={{ 
-        scale: hoverScale, 
-        y: hoverY,
-        transition: { duration: 0.2 }
-      }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={
+        shouldReduceMotion
+          ? undefined
+          : { scale: hoverScale, y: hoverY, transition: { duration: 0.18, ease: motionEase } }
+      }
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
       {...props}
     >
       {children}
@@ -180,13 +191,15 @@ interface PageTransitionProps {
 }
 
 export function PageTransition({ children, className }: PageTransitionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+      exit={shouldReduceMotion ? undefined : { opacity: 0, y: -6 }}
+      transition={{ duration: 0.24, ease: motionEase }}
     >
       {children}
     </motion.div>

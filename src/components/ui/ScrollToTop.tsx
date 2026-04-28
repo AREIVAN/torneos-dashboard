@@ -21,9 +21,11 @@ export function ScrollToTop() {
   }, []);
 
   const scrollToTop = () => {
+    const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior: shouldReduceMotion ? "auto" : "smooth",
     });
   };
 
@@ -34,7 +36,7 @@ export function ScrollToTop() {
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onClick={scrollToTop}
           className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-brand-panel border border-brand-neon/30 text-brand-neon shadow-lg shadow-brand-neon/20 flex items-center justify-center cursor-pointer hover:bg-brand-neon/20 hover:border-brand-neon/50 transition-colors focus-visible:outline-2 focus-visible:outline-brand-neon focus-visible:outline-offset-2"
           aria-label="Volver arriba"

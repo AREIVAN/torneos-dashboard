@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark" suppressHydrationWarning>
+    <html lang="es" className="dark" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen font-sans antialiased text-brand-text`}>
         <div className="max-w-[1200px] mx-auto px-4 py-4 w-full h-full flex flex-col">
           <Providers>

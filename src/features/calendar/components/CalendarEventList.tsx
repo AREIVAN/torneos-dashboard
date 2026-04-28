@@ -74,7 +74,7 @@ export function CalendarEventList({ events, query, chip, onSelect }: Props) {
       <div
         key={String(t.id)}
         onClick={() => onSelect(String(t.id))}
-        className="flex items-start justify-between gap-3 p-3 rounded-2xl border border-brand-stroke/20 bg-brand-bg/25 cursor-pointer hover:border-brand-neon/35 hover:bg-brand-bg/40 transition-all"
+        className="flex items-start justify-between gap-3 p-3 rounded-2xl border border-brand-stroke/20 bg-brand-bg/25 cursor-pointer hover:border-brand-neon/35 hover:bg-brand-bg/40 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
       >
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <b className="text-brand-text text-sm font-black">
@@ -103,7 +103,7 @@ export function CalendarEventList({ events, query, chip, onSelect }: Props) {
           )}
         </div>
         <button
-          className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all shrink-0"
+          className="border border-brand-neon/25 bg-brand-panel2/55 text-brand-text px-3 py-1.5 rounded-xl text-xs font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             onSelect(String(t.id));

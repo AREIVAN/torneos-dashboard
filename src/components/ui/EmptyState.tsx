@@ -100,7 +100,7 @@ export function EmptyState({ icon = "robot", title, description, action }: Empty
             action.href ? (
               <Link
                 href={action.href}
-                className="inline-flex items-center gap-2 border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-4 py-2.5 rounded-xl text-sm font-bold tracking-wide hover:bg-brand-neon/20 transition-all"
+                className="inline-flex items-center gap-2 border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-4 py-2.5 rounded-xl text-sm font-bold tracking-wide hover:bg-brand-neon/20 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
               >
                 {action.label}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +110,7 @@ export function EmptyState({ icon = "robot", title, description, action }: Empty
             ) : (
               <button
                 onClick={action.onClick}
-                className="inline-flex items-center gap-2 border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-4 py-2.5 rounded-xl text-sm font-bold tracking-wide hover:bg-brand-neon/20 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 border border-brand-neon/40 bg-brand-neon/10 text-brand-neon px-4 py-2.5 rounded-xl text-sm font-bold tracking-wide hover:bg-brand-neon/20 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none cursor-pointer"
               >
                 {action.label}
               </button>

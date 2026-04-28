@@ -213,13 +213,13 @@ export default function BracketVisualizer({
         <div className="px-4 pt-4 pb-1 flex flex-wrap justify-end gap-2">
           <button
             onClick={downloadMapSvg}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer transition-all"
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Exportar SVG
           </button>
           <button
             onClick={() => void downloadMapJpg()}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer transition-all"
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-brand-neon/40 text-brand-neon hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           >
             Exportar JPG
           </button>

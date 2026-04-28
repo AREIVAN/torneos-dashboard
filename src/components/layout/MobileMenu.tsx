@@ -94,11 +94,6 @@ export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close menu when route changes
-  useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
   // Prevent scroll when menu is open
   useEffect(() => {
     if (isOpen) {
@@ -177,7 +172,8 @@ export function MobileMenu() {
                     >
                       <Link
                         href={item.href}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                           isActive(item.href)
                             ? "bg-brand-neon/15 border border-brand-neon/30 text-brand-text"
                             : "border border-transparent hover:bg-brand-neon/10 text-brand-muted hover:text-brand-text"
@@ -194,7 +190,8 @@ export function MobileMenu() {
                 <div className="mt-6 pt-6 border-t border-brand-stroke/25">
                   <Link
                     href="/robots/new"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border border-brand-neon/45 bg-gradient-to-r from-brand-neon/20 to-brand-neon2/10 text-brand-text font-extrabold hover:brightness-110 transition-all"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border border-brand-neon/45 bg-gradient-to-r from-brand-neon/20 to-brand-neon2/10 text-brand-text font-extrabold hover:brightness-110 motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

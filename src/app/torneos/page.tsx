@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTournaments, deleteTournament } from "@/features/torneos/api";
 import type { DbTournament, TournamentStatus } from "@/lib/supabase/database.types";
 import { normalizeRobotCategory } from "@/lib/categoryNormalization";
@@ -32,30 +33,26 @@ const FILTER_OPTIONS: { value: TournamentStatus | "all"; label: string }[] = [
 ];
 
 export default function TorneosListPage() {
-  const [tournaments, setTournaments] = useState<DbTournament[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<TournamentStatus | "all">("all");
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadTournaments = async () => {
-    setIsLoading(true);
-    setError(null);
+  const {
+    data: tournaments = [],
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["tournaments", filter],
+    queryFn: async () => {
+      const options = filter === "all" ? {} : { status: filter };
+      const { data, error: fetchError } = await getTournaments(options);
 
-    const options = filter === "all" ? {} : { status: filter };
-    const { data, error: fetchError } = await getTournaments(options);
-
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      setTournaments(data);
-    }
-
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    loadTournaments();
-  }, [filter]);
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+      return data;
+    },
+  });
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar el torneo "${name}"? Esta acción no se puede deshacer.`)) {
@@ -66,7 +63,10 @@ export default function TorneosListPage() {
     if (error) {
       alert(`Error al eliminar: ${error.message}`);
     } else {
-      setTournaments((prev) => prev.filter((t) => t.id !== id));
+      queryClient.setQueryData<DbTournament[]>(["tournaments", filter], (prev) =>
+        prev?.filter((t) => t.id !== id)
+      );
+      void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
     }
   };
 
@@ -96,7 +96,7 @@ export default function TorneosListPage() {
         <div className="flex flex-wrap gap-2.5">
           <Link
             href="/torneos/new"
-            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer transition-all flex items-center gap-2"
+            className="border border-brand-neon/45 bg-linear-to-r from-brand-neon/30 to-brand-neon2/10 shadow-[inset_0_0_0_1px_rgba(122,63,255,0.12)] text-brand-text px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide hover:brightness-110 cursor-pointer motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -113,7 +113,7 @@ export default function TorneosListPage() {
             <button
               key={option.value}
               onClick={() => setFilter(option.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                 filter === option.value
                   ? "bg-brand-neon/20 text-brand-neon border border-brand-neon/40"
                   : "bg-brand-panel2/50 text-brand-muted border border-brand-stroke/20 hover:bg-brand-panel2/80"
@@ -135,9 +135,11 @@ export default function TorneosListPage() {
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <p className="text-brand-hot mb-4">{error}</p>
+            <p className="text-brand-hot mb-4">
+              {error instanceof Error ? error.message : "No se pudieron cargar los torneos"}
+            </p>
             <button
-              onClick={loadTournaments}
+              onClick={() => void refetch()}
               className="px-4 py-2 bg-brand-panel2 border border-brand-stroke/30 rounded-lg text-brand-text hover:brightness-110"
             >
               Reintentar
@@ -200,7 +202,7 @@ export default function TorneosListPage() {
                     </span>
                     <button
                       onClick={() => handleDelete(tournament.id, tournament.name)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-brand-muted hover:text-brand-hot transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-brand-muted hover:text-brand-hot motion-safe:transition-[transform,opacity,background-color,border-color,color,box-shadow,filter] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
                       title="Eliminar"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
