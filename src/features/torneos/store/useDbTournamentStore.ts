@@ -851,13 +851,9 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
 
           if (m.wa >= 2 || m.wb >= 2) {
             propagateWinnerToLosers(dbl, ri, mi, loserSide);
-
-            const isWinnersFinal = ri === dbl.winners.rounds.length - 1;
-            if (isWinnersFinal) {
-              advanceWinnersChampionToGrandFinal(dbl);
-            }
           }
         }
+        advanceWinnersChampionToGrandFinal(dbl);
         set({ view: { ...view, dbl: { ...dbl } } });
       } else if (bracketId === 'losers') {
         const m = dbl.losers.rounds[ri][mi];
@@ -870,25 +866,19 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
         }
         set({ view: { ...view, dbl: { ...dbl } } });
       } else if (bracketId === 'gf') {
-        const gfMatch = dbl.gfReset && dbl.grandFinal.length > 1 ? dbl.grandFinal[1] : dbl.grandFinal[0];
+        const gfMatch = dbl.grandFinal[0];
         const currentSide = gfMatch.winner;
 
         if (currentSide === side) {
-          if (dbl.gfReset && dbl.grandFinal.length > 1) {
-            dbl.grandFinal[1].wa = 0;
-            dbl.grandFinal[1].wb = 0;
-            dbl.grandFinal[1].winner = null;
-          } else {
-            gfMatch.wa = 0;
-            gfMatch.wb = 0;
-            gfMatch.winner = null;
-          }
+          gfMatch.wa = 0;
+          gfMatch.wb = 0;
+          gfMatch.winner = null;
+          dbl.gfReset = false;
+          dbl.grandFinal = [gfMatch];
+          dbl.tournamentResolved = false;
+          dbl.champion = null;
         } else {
-          const result = resolveGrandFinal(dbl, side);
-          if (result.reset) {
-            set({ view: { ...view, dbl: { ...dbl } } });
-            return;
-          }
+          resolveGrandFinal(dbl, side);
         }
         set({ view: { ...view, dbl: { ...dbl } } });
       }
@@ -978,6 +968,7 @@ export const useDbTournamentStore = create<DbTournamentStore>()((set, get) => ({
 
       if (bracketId === 'winners') {
         clearMatchBO3(dbl.winners, ri, mi);
+        advanceWinnersChampionToGrandFinal(dbl);
         set({ view: { ...view, dbl: { ...dbl } } });
       } else if (bracketId === 'losers') {
         clearLosersMatch(dbl, ri, mi);

@@ -384,7 +384,7 @@ export function assignGroupsSnake(
  *   - Rondas impares (0, 2, 4...): reciben perdedores de winners + sobrevivientes de losers.
  *   - Rondas pares (1, 3, 5...): solo sobrevivientes de losers se enfrentan entre sí.
  * - Grand Final: winners champion vs losers champion.
- *   - Si losers champion gana GF1, hay reset (GF2).
+ *   - El ganador de la Grand Final queda campeón; no se genera bracket reset.
  *
  * Mapeo de perdedores (winners round -> losers round de entrada):
  *   Winners R1 losers -> Losers R0 (primera ronda de losers)
@@ -699,13 +699,33 @@ export function advanceLoserToGrandFinal(
 export function advanceWinnersChampionToGrandFinal(dbl: DoubleStructure): void {
   const winnersFinalRound = dbl.winners.rounds[dbl.winners.rounds.length - 1];
   const finalMatch = winnersFinalRound[0];
-  if (!finalMatch.winner) return;
-
-  const winner = finalMatch.winner === "a" ? finalMatch.a : finalMatch.b;
   const gfMatch = dbl.grandFinal[0];
 
-  if (isBye(gfMatch.a) || !gfMatch.a.id) {
-    gfMatch.a = { ...winner };
+  if (!finalMatch.winner) {
+    gfMatch.a = emptySlot();
+    gfMatch.wa = 0;
+    gfMatch.wb = 0;
+    gfMatch.winner = null;
+    dbl.grandFinal = [gfMatch];
+    dbl.gfReset = false;
+    dbl.tournamentResolved = false;
+    dbl.champion = null;
+    return;
+  }
+
+  const winner = finalMatch.winner === "a" ? finalMatch.a : finalMatch.b;
+  const changedWinner = gfMatch.a.id !== winner.id;
+
+  gfMatch.a = { ...winner };
+
+  if (changedWinner) {
+    gfMatch.wa = 0;
+    gfMatch.wb = 0;
+    gfMatch.winner = null;
+    dbl.grandFinal = [gfMatch];
+    dbl.gfReset = false;
+    dbl.tournamentResolved = false;
+    dbl.champion = null;
   }
 }
 
@@ -730,35 +750,22 @@ export function resolveGrandFinal(
 
   if (gfMatch.wb >= 2) {
     gfMatch.winner = "b";
-    if (!dbl.gfReset) {
-      dbl.gfReset = true;
-      if (dbl.grandFinal.length === 1) {
-        dbl.grandFinal.push({
-          id: "GF2",
-          a: { ...gfMatch.a },
-          b: emptySlot(),
-          wa: 0,
-          wb: 0,
-          winner: null,
-        });
-      }
-      return { resolved: false, reset: true, champion: null };
-    } else {
-      dbl.tournamentResolved = true;
-      dbl.champion = gfMatch.b.id;
-      return { resolved: true, reset: false, champion: gfMatch.b.id };
-    }
+    dbl.gfReset = false;
+    dbl.grandFinal = [gfMatch];
+    dbl.tournamentResolved = true;
+    dbl.champion = gfMatch.b.id;
+    return { resolved: true, reset: false, champion: gfMatch.b.id };
   }
 
   return { resolved: false, reset: false, champion: null };
 }
 
 export function clearGrandFinal(dbl: DoubleStructure): void {
-  dbl.grandFinal.forEach((m) => {
-    m.wa = 0;
-    m.wb = 0;
-    m.winner = null;
-  });
+  const gfMatch = dbl.grandFinal[0];
+  gfMatch.wa = 0;
+  gfMatch.wb = 0;
+  gfMatch.winner = null;
+  dbl.grandFinal = [gfMatch];
   dbl.gfReset = false;
   dbl.tournamentResolved = false;
   dbl.champion = null;

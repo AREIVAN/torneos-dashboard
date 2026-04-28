@@ -130,7 +130,7 @@ export function getTopThreeFromView(view: ViewState | null): string[] {
 
   if (view.type === "double" && view.dbl) {
     if (!view.dbl.tournamentResolved || !view.dbl.champion) return [];
-    const final = view.dbl.gfReset && view.dbl.grandFinal.length > 1 ? view.dbl.grandFinal[1] : view.dbl.grandFinal[0];
+    const final = view.dbl.grandFinal[0];
     if (!final?.winner) return [view.dbl.champion];
     const second = getMatchWinnerId({ ...final, winner: final.winner === "a" ? "b" : "a" });
     const losersFinalRound = view.dbl.losers.rounds[view.dbl.losers.rounds.length - 1] || [];

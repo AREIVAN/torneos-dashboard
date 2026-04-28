@@ -111,6 +111,12 @@ function toLegacyMatchUpdatePayload(data: DbMatchUpdate) {
   return payload;
 }
 
+function getMatchConflictColumns(table: MatchTableName) {
+  return table === 'tournament_matches'
+    ? 'tournament_id,bracket,round,match_no'
+    : 'tournament_id,bracket_type,round_index,match_index';
+}
+
 // =============================================
 // CREATE
 // =============================================
@@ -149,8 +155,9 @@ export async function createMatches(
   try {
     const data = await secureMutation<DbMatchCompatRow[]>({
       table,
-      operation: 'insert',
+      operation: 'upsert',
       data: table === 'tournament_matches' ? matches.map(toLegacyMatchPayload) : matches,
+      onConflict: getMatchConflictColumns(table),
     });
     return { data: (data || []).map(normalizeMatchRow), error: null };
   } catch (err) {

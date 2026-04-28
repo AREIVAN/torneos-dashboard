@@ -199,29 +199,31 @@ function BracketColumns({
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 custom-scroll">
-      {bracket.rounds.map((matches, ri) => {
-        const title =
-          ri === bracket.rounds.length - 1
-            ? "Final"
-            : `Ronda ${ri + 1}`;
-        return (
-          <RoundColumn
-            key={ri}
-            matches={matches}
-            title={title}
-            viewMode={viewMode}
-            onWin={(mi, side) => {
-              const { toggleMatchWin } = useTournamentStore.getState();
-              toggleMatchWin(bracketId || "main", ri, mi, side);
-            }}
-            onClear={(mi) => {
-              const { clearMatch } = useTournamentStore.getState();
-              clearMatch(bracketId || "main", ri, mi);
-            }}
-          />
-        );
-      })}
+    <div className="w-full min-w-0 overflow-x-auto rounded-[18px] border border-brand-stroke/15 bg-brand-bg/20 p-3 pb-4 custom-scroll">
+      <div className="flex w-max gap-4">
+        {bracket.rounds.map((matches, ri) => {
+          const title =
+            ri === bracket.rounds.length - 1
+              ? "Final"
+              : `Ronda ${ri + 1}`;
+          return (
+            <RoundColumn
+              key={ri}
+              matches={matches}
+              title={title}
+              viewMode={viewMode}
+              onWin={(mi, side) => {
+                const { toggleMatchWin } = useTournamentStore.getState();
+                toggleMatchWin(bracketId || "main", ri, mi, side);
+              }}
+              onClear={(mi) => {
+                const { clearMatch } = useTournamentStore.getState();
+                clearMatch(bracketId || "main", ri, mi);
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -317,16 +319,9 @@ function GrandFinalView({
       <div className="text-xs uppercase tracking-wider text-brand-muted/70 mb-2">
         Grand Final
       </div>
-      {dbl.grandFinal.map((gf: Match, gfi: number) => {
-        const isReset = gfi > 0;
-
+      {dbl.grandFinal.slice(0, 1).map((gf: Match, gfi: number) => {
         return (
           <div key={gf.id} className="relative">
-            {isReset && (
-              <div className="text-[10px] uppercase tracking-wider text-brand-hot/70 mb-1 text-center">
-                Reset
-              </div>
-            )}
             <MatchCard
               m={gf}
               viewMode={viewMode}
@@ -338,8 +333,7 @@ function GrandFinalView({
       })}
 
       <div className="text-[10px] text-brand-muted/60 bg-brand-bg/25 p-2 rounded-lg border border-brand-stroke/10 mt-2">
-        <span className="text-brand-neon font-bold">A</span> gana con 1 match ·
-        <span className="text-brand-hot font-bold ml-1">B</span> debe ganar 2 matches
+        El ganador de la Grand Final queda campeón del torneo.
       </div>
     </div>
   );
@@ -399,40 +393,48 @@ function DoubleView() {
   const isResolved = dbl.tournamentResolved;
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       {isResolved && dbl.champion && (
         <ChampionBanner championId={dbl.champion} />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-brand-neon/70 mb-3 flex items-center gap-2">
+      <div className="space-y-4 min-w-0">
+        <section className="rounded-[20px] border border-brand-neon/18 bg-brand-panel/25 p-3 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="text-xs uppercase tracking-wider text-brand-neon/80 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-brand-neon animate-pulse" />
               Winners Bracket
             </div>
-            <BracketColumns
-              bracket={dbl.winners}
-              bracketId="winners"
-              viewMode={viewMode}
-              viewStyle={viewStyle}
-            />
+            <span className="text-[11px] uppercase tracking-wide text-brand-muted/60">
+              {dbl.winners.rounds.length} rondas
+            </span>
           </div>
-        </div>
+          <BracketColumns
+            bracket={dbl.winners}
+            bracketId="winners"
+            viewMode={viewMode}
+            viewStyle={viewStyle}
+          />
+        </section>
 
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-brand-hot/70 mb-3 flex items-center gap-2">
+        <section className="rounded-[20px] border border-brand-hot/18 bg-brand-panel/25 p-3 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="text-xs uppercase tracking-wider text-brand-hot/80 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-brand-hot" />
               Losers Bracket
             </div>
-            <LosersBracketView dbl={dbl} viewMode={viewMode} viewStyle={viewStyle} />
+            <span className="text-[11px] uppercase tracking-wide text-brand-muted/60">
+              {dbl.losers.rounds.length} rondas
+            </span>
           </div>
-        </div>
+          <LosersBracketView dbl={dbl} viewMode={viewMode} viewStyle={viewStyle} />
+        </section>
 
-        <div className="flex flex-col gap-4">
-          <GrandFinalView dbl={dbl} viewMode={viewMode} />
-        </div>
+        <section className="rounded-[20px] border border-brand-stroke/15 bg-brand-panel/25 p-3 min-w-0">
+          <div className="max-w-[420px]">
+            <GrandFinalView dbl={dbl} viewMode={viewMode} />
+          </div>
+        </section>
       </div>
     </div>
   );
